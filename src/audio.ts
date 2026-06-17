@@ -7,10 +7,14 @@ function initAudio(): AudioContext {
   return audioCtx;
 }
 
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
 export function playTone(progress: number): void {
   const ctx = initAudio();
   const now = ctx.currentTime;
-  const freq = 200 + progress * 800;
+  const freq = lerp(400, 1000, progress);
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'sine';

@@ -1,4 +1,4 @@
-import type { PuzzleModule, PuzzleContext } from '../types';
+import type { PuzzleContext, PuzzleModule } from '../types';
 
 const TOGGLES: number[][] = [
   [0, 1],
@@ -20,7 +20,6 @@ let optimal = 0;
 
 let lightEls: HTMLDivElement[] = [];
 let labelEls: HTMLDivElement[] = [];
-let btnEls: HTMLButtonElement[] = [];
 let circleEls: HTMLDivElement[] = [];
 
 let containerEl: HTMLElement | null = null;
@@ -91,7 +90,7 @@ function press(idx: number): void {
   if (playing || !ctx) return;
   toggle(idx);
   totalMoves++;
-  ctx.playTone(1);
+  ctx.playTone(idx / 3);
   render();
   if (checkStageComplete()) {
     completeStage();
@@ -105,10 +104,10 @@ async function completeStage(): Promise<void> {
 
   for (let f = 0; f < 3; f++) {
     ctx.playTone(0.5);
-    btnEls[target].classList.add('flash');
+    lightEls[target].classList.add('flash');
     labelEls[target].classList.add('flash');
     await new Promise(r => setTimeout(r, 200));
-    btnEls[target].classList.remove('flash');
+    lightEls[target].classList.remove('flash');
     labelEls[target].classList.remove('flash');
     await new Promise(r => setTimeout(r, 200));
   }
@@ -121,13 +120,13 @@ async function completeStage(): Promise<void> {
     for (let f = 0; f < 5; f++) {
       ctx.playTone(0.5);
       for (let i = 0; i < 4; i++) {
-        btnEls[i].classList.add('flash');
+        lightEls[i].classList.add('flash');
         labelEls[i].classList.add('flash');
         lightEls[i].classList.add('on');
       }
       await new Promise(r => setTimeout(r, 200));
       for (let i = 0; i < 4; i++) {
-        btnEls[i].classList.remove('flash');
+        lightEls[i].classList.remove('flash');
         labelEls[i].classList.remove('flash');
         lightEls[i].classList.remove('on');
       }
@@ -192,6 +191,7 @@ export const stagla: PuzzleModule = {
     for (let i = 0; i < 4; i++) {
       const light = document.createElement('div');
       light.className = 'stagla-light';
+      light.addEventListener('click', () => press(i));
       lightsRow.appendChild(light);
       lightEls.push(light);
     }
@@ -211,19 +211,6 @@ export const stagla: PuzzleModule = {
 
     c.appendChild(top);
 
-    const btnsRow = document.createElement('div');
-    btnsRow.className = 'stagla-buttons';
-    btnEls = [];
-    for (let i = 0; i < 4; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'stagla-btn';
-      btn.textContent = LABELS[i];
-      btn.addEventListener('click', () => press(i));
-      btnsRow.appendChild(btn);
-      btnEls.push(btn);
-    }
-    c.appendChild(btnsRow);
-
     generatePuzzle();
 
     ctx.setActions([
@@ -235,7 +222,6 @@ export const stagla: PuzzleModule = {
       destroy() {
         lightEls = [];
         labelEls = [];
-        btnEls = [];
         circleEls = [];
         containerEl!.innerHTML = '';
         containerEl = null;

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --minify",
-    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch & sleep 1 && npx http-server . -p 8000 -c-1"
+    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch=forever & sleep 1 && npx http-server . -p 8000 -c-1"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
