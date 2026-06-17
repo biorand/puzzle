@@ -93,9 +93,7 @@ function startPuzzle(mod: PuzzleModule): void {
 function onPuzzleSelect(id: string): void {
   const mod = puzzles.get(id);
   if (!mod) return;
-  const url = `/${mod.sourceGame}/${mod.slug}`;
-  history.pushState({ puzzle: id }, '', url);
-  startPuzzle(mod);
+  location.hash = `#/${mod.sourceGame}/${mod.slug}`;
 }
 
 function onBack(): void {
@@ -108,14 +106,15 @@ function router(): void {
     currentPuzzle = null;
   }
 
-  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const hash = location.hash.replace(/^#\/?/, '') || '/';
 
-  if (path === '/') {
+  // Hash is empty or just '#' → show menu
+  if (hash === '/' || hash === '') {
     showMenu();
     return;
   }
 
-  const match = path.match(/^\/([^/]+)\/([^/]+)$/);
+  const match = hash.match(/^([^/]+)\/([^/]+)/);
   if (match) {
     const key = `${match[1]}/${match[2]}`;
     const mod = puzzlesByPath.get(key);
@@ -125,10 +124,9 @@ function router(): void {
     }
   }
 
-  // Unknown path — fall back to menu
   showMenu();
 }
 
-window.addEventListener('popstate', router);
+window.addEventListener('hashchange', router);
 router();
 initAudioOnFirstClick();
