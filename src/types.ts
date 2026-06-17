@@ -14,8 +14,9 @@ export interface PuzzleContext {
   setActions(buttons: ActionButton[]): void;
   showOverlay(text: string, ms?: number): Promise<void>;
   hideOverlay(): void;
-  playTone(idx: number): void;
+  playTone(progress: number): void;
   playChime(): void;
+  playMelody(notes: string): Promise<void>;
   score: {
     count: number;
     increment(): void;

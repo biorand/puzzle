@@ -247,7 +247,148 @@ body {
 
 #puzzle-container {
   min-height: 280px;
+}
+
+/* ── portable safe ── */
+
+#safe-layout {
   display: flex;
+  gap: 20px;
   justify-content: center;
+  align-items: flex-start;
+}
+
+#safe-left {
+  flex-shrink: 0;
+}
+
+#diff-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diff-btn {
+  background: #1a1a1a;
+  border: 2px solid #444;
+  color: #888;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.diff-btn:hover {
+  border-color: #666;
+  color: #ccc;
+}
+
+.diff-btn.active {
+  border-color: #ff6600;
+  color: #ff6600;
+}
+
+#safe-right {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 14px;
+}
+
+#safe-ring-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  flex-shrink: 0;
+}
+
+.safe-light,
+.safe-arrow {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+}
+
+.safe-light {
+  border-radius: 50%;
+  border: 2px solid #335;
+  background: #1a1a2a;
+  transition: background 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+
+.safe-light.chain {
+  background: #0cc;
+  border-color: #0ee;
+  box-shadow: 0 0 10px rgba(0, 204, 204, 0.5);
+}
+
+.safe-arrow {
+  position: absolute;
+  width: 43px;
+  height: 43px;
+  margin-left: -22px;
+  margin-top: -22px;
+  color: #555;
+  font-size: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform-origin: center;
+  line-height: 1;
+}
+
+#umbrella-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(22.5deg);
+}
+
+#safe-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.safe-row {
+  display: flex;
+  gap: 5px;
+}
+
+.safe-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  border: 2px solid #555;
+  background: #222;
+  color: #888;
+  font-family: inherit;
+  font-size: 20px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+
+.safe-btn:hover {
+  border-color: #777;
+  background: #2a2a2a;
+}
+
+.safe-btn:active {
+  background: #1a1a1a;
+}
+
+.safe-btn.pressed {
+  background: #ff6600;
+  border-color: #ff8800;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.4);
+  color: #fff;
 }

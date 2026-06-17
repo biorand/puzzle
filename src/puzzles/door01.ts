@@ -57,7 +57,7 @@ function press(idx: number): void {
   if (playing || !ctx) return;
   state ^= MASKS[idx];
   moves++;
-  ctx.playTone(idx);
+  ctx.playTone(idx / 8);
   render();
   if (state === SOLVED) completeAnimation();
 }

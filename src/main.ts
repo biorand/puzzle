@@ -1,5 +1,5 @@
 import type { PuzzleContext, StatusInfo, ActionButton } from './types';
-import { playTone, playChime, initAudioOnFirstClick } from './audio';
+import { playTone, playChime, playMelody as pMelody, initAudioOnFirstClick } from './audio';
 import { createHeader, createStatusBar, createFooter, createOverlay, createMenu } from './ui';
 import { puzzles } from './puzzles/index';
 
@@ -75,6 +75,7 @@ function onPuzzleSelect(id: string): void {
 
     playTone,
     playChime,
+    playMelody: pMelody,
 
     score: {
       get count(): number {
