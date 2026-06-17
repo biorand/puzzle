@@ -1,7 +1,7 @@
-import type { PuzzleContext, StatusInfo, ActionButton } from './types';
+import type { PuzzleContext, StatusInfo, ActionButton, PuzzleModule } from './types';
 import { playTone, playChime, playMelody as pMelody, initAudioOnFirstClick } from './audio';
 import { createHeader, createStatusBar, createFooter, createOverlay, createMenu } from './ui';
-import { puzzles } from './puzzles/index';
+import { puzzles, puzzlesByPath } from './puzzles/index';
 
 const app = document.getElementById('app')!;
 let currentPuzzle: { destroy(): void } | null = null;
@@ -23,10 +23,8 @@ function showMenu(): void {
   app.appendChild(createMenu(entries, onPuzzleSelect));
 }
 
-function onPuzzleSelect(id: string): void {
-  const mod = puzzles.get(id);
-  if (!mod) return;
-
+function startPuzzle(mod: PuzzleModule): void {
+  const id = mod.id;
   app.innerHTML = '';
 
   const header = createHeader(mod.name, getScore(id), onBack);
@@ -92,13 +90,45 @@ function onPuzzleSelect(id: string): void {
   currentPuzzle = mod.create(container, ctx);
 }
 
+function onPuzzleSelect(id: string): void {
+  const mod = puzzles.get(id);
+  if (!mod) return;
+  const url = `/${mod.sourceGame}/${mod.slug}`;
+  history.pushState({ puzzle: id }, '', url);
+  startPuzzle(mod);
+}
+
 function onBack(): void {
+  history.back();
+}
+
+function router(): void {
   if (currentPuzzle) {
     currentPuzzle.destroy();
     currentPuzzle = null;
   }
+
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+
+  if (path === '/') {
+    showMenu();
+    return;
+  }
+
+  const match = path.match(/^\/([^/]+)\/([^/]+)$/);
+  if (match) {
+    const key = `${match[1]}/${match[2]}`;
+    const mod = puzzlesByPath.get(key);
+    if (mod) {
+      startPuzzle(mod);
+      return;
+    }
+  }
+
+  // Unknown path — fall back to menu
   showMenu();
 }
 
-showMenu();
+window.addEventListener('popstate', router);
+router();
 initAudioOnFirstClick();

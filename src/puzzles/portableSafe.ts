@@ -227,6 +227,8 @@ function buildGrid(): void {
 
 export const portableSafe: PuzzleModule = {
   id: 'portableSafe',
+  slug: 'portable-safe',
+  sourceGame: 're2r',
   name: 'Portable Safe',
 
   create(c: HTMLElement, context: PuzzleContext) {

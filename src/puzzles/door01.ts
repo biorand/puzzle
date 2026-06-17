@@ -98,7 +98,9 @@ async function completeAnimation(): Promise<void> {
 
 export const door01: PuzzleModule = {
   id: 'door01',
-  name: 'Door Puzzle',
+  slug: 'keypad',
+  sourceGame: 're1',
+  name: 'Keypad',
 
   create(container: HTMLElement, context: PuzzleContext) {
     ctx = context;

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --minify",
-    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch --servedir=."
+    "dev": "node dev-server.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

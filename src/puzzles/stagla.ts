@@ -159,7 +159,9 @@ async function completeStage(): Promise<void> {
 
 export const stagla: PuzzleModule = {
   id: 'stagla',
-  name: 'Stagla Puzzle',
+  slug: 'stagla',
+  sourceGame: 're3',
+  name: 'Stagla',
 
   create(c: HTMLElement, context: PuzzleContext) {
     containerEl = c;

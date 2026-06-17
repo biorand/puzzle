@@ -25,6 +25,8 @@ export interface PuzzleContext {
 
 export interface PuzzleModule {
   id: string;
+  slug: string;
+  sourceGame: string;
   name: string;
   create(container: HTMLElement, ctx: PuzzleContext): { destroy(): void };
 }
