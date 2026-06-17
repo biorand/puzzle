@@ -1,7 +1,7 @@
-import type { PuzzleContext, StatusInfo, ActionButton, PuzzleModule } from './types';
-import { playTone, playChime, playMelody as pMelody, initAudioOnFirstClick } from './audio';
-import { createHeader, createStatusBar, createFooter, createOverlay, createMenu } from './ui';
+import { initAudioOnFirstClick, playChime, playTone, playMelody as pMelody } from './audio';
 import { puzzles, puzzlesByPath } from './puzzles/index';
+import type { ActionButton, PuzzleContext, PuzzleModule, StatusInfo } from './types';
+import { createFooter, createHeader, createMenu, createOverlay, createStatusBar } from './ui';
 
 const app = document.getElementById('app')!;
 let currentPuzzle: { destroy(): void } | null = null;
@@ -27,7 +27,7 @@ function startPuzzle(mod: PuzzleModule): void {
   const id = mod.id;
   app.innerHTML = '';
 
-  const header = createHeader(mod.name, getScore(id), onBack);
+  const header = createHeader(mod.name, onBack);
   app.appendChild(header);
 
   const container = document.createElement('div');
@@ -55,9 +55,7 @@ function startPuzzle(mod: PuzzleModule): void {
     setActions(buttons: ActionButton[]): void {
       const existing = document.getElementById('app-footer');
       if (existing) existing.remove();
-      if (buttons.length > 0) {
-        app.appendChild(createFooter(buttons));
-      }
+      app.appendChild(createFooter(buttons));
     },
 
     async showOverlay(text: string, ms = 2000): Promise<void> {

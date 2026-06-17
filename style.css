@@ -16,7 +16,7 @@ body {
   overflow: hidden;
   background: #111;
   color: #ccc;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Open Sans', sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -35,69 +35,97 @@ body {
   height: 100dvh;
   overflow: hidden;
   text-align: center;
-  padding:
-    calc(20px + env(safe-area-inset-top))
-    calc(20px + env(safe-area-inset-right))
-    calc(16px + env(safe-area-inset-bottom))
-    calc(20px + env(safe-area-inset-left));
 }
 
-/* ── header ── */
+/* ── header bar ── */
 
 #app-header {
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 12px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding:
+    calc(8px + env(safe-area-inset-top, 0px))
+    calc(8px + env(safe-area-inset-right, 0px))
+    8px
+    calc(8px + env(safe-area-inset-left, 0px));
+  min-height: 56px;
 }
 
 #back-btn {
+  grid-column: 1;
+  justify-self: start;
   background: none;
-  border: 2px solid #555;
-  color: #aaa;
-  padding: 6px 14px;
-  font-family: inherit;
-  font-size: 13px;
+  border: none;
+  color: #ff6600;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: border-color 0.15s, color 0.15s;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #back-btn:hover {
-  border-color: #888;
-  color: #eee;
+  color: #ff8800;
+}
+
+#back-btn:active {
+  color: #cc5500;
+}
+
+#back-btn .material-symbols-outlined {
+  font-size: 28px;
 }
 
 #puzzle-title {
-  font-size: 20px;
-  letter-spacing: 2px;
-  color: #ff6600;
+  grid-column: 2;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: #eee;
   text-transform: uppercase;
-  flex: 1;
-}
-
-#score-display {
-  font-size: 14px;
-  color: #888;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Cutive Mono', monospace;
 }
 
-#score-num {
-  color: #ff6600;
-  font-weight: bold;
+#settings-btn {
+  grid-column: 3;
+  justify-self: end;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#settings-btn:hover {
+  color: #ccc;
+}
+
+#settings-btn:active {
+  color: #666;
+}
+
+#settings-btn .material-symbols-outlined {
+  font-size: 26px;
 }
 
 /* ── status bar ── */
 
 #status-bar {
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: 14px;
   color: #aaa;
-  margin-bottom: 24px;
-  margin-top: 24px;
+  padding: 10px 20px;
+  padding-left: calc(20px + env(safe-area-inset-left, 0px));
+  padding-right: calc(20px + env(safe-area-inset-right, 0px));
 }
 
 #moves-num {
@@ -107,6 +135,11 @@ body {
 
 #optimal-num {
   color: #ff8800;
+  font-weight: bold;
+}
+
+#score-num {
+  color: #ff6600;
   font-weight: bold;
 }
 
@@ -149,37 +182,74 @@ body {
   color: #fff;
 }
 
-/* ── footer ── */
+/* ── footer bar ── */
 
 #app-footer {
   flex-shrink: 0;
   display: flex;
-  gap: 14px;
-  justify-content: center;
-  margin-top: 24px;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  padding:
+    6px
+    calc(6px + env(safe-area-inset-right, 0px))
+    6px
+    calc(6px + env(safe-area-inset-left, 0px));
 }
 
 .action-btn {
-  background: #2a2a2a;
-  border: 2px solid #555;
-  color: #bbb;
-  padding: 10px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: #888;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
+  padding: 2px 4px;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  letter-spacing: 0.5px;
+  transition: color 0.15s;
 }
 
 .action-btn:hover {
-  background: #3a3a3a;
-  border-color: #888;
   color: #eee;
 }
 
 .action-btn:active {
-  background: #222;
+  color: #ff6600;
+}
+
+.action-btn:hover .btn-icon {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn .btn-icon {
+  font-size: 24px;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.action-btn .btn-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.action-btn.empty {
+  cursor: default;
+  color: transparent;
 }
 
 /* ── overlay ── */
@@ -230,6 +300,7 @@ body {
   letter-spacing: 6px;
   color: #ff6600;
   margin-bottom: 4px;
+  font-family: 'Cutive Mono', monospace;
 }
 
 #menu h2 {
@@ -238,6 +309,7 @@ body {
   color: #888;
   font-weight: normal;
   margin-bottom: 32px;
+  font-family: 'Cutive Mono', monospace;
 }
 
 #menu-grid {
@@ -281,6 +353,9 @@ body {
   align-items: center;
   min-height: 200px;
   overflow: hidden;
+  padding: 20px;
+  padding-left: calc(20px + env(safe-area-inset-left, 0px));
+  padding-right: calc(20px + env(safe-area-inset-right, 0px));
 }
 
 /* ── portable safe ── */
@@ -553,7 +628,8 @@ button,
 .safe-btn,
 .cell,
 .action-btn,
-#back-btn {
+#back-btn,
+#settings-btn {
   touch-action: manipulation;
 }
 
@@ -568,9 +644,16 @@ button,
     max-width: 420px;
     min-height: 0;
     height: min(85dvh, 780px);
-    border: 1px solid #222;
-    border-radius: 24px;
-    padding: 24px 24px 20px;
+    border: 1px solid #2a2a2a;
+    border-radius: 28px;
     box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
+  }
+
+  #app-header {
+    border-radius: 28px 28px 0 0;
+  }
+
+  #app-footer {
+    border-radius: 0 0 28px 28px;
   }
 }
