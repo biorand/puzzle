@@ -3,42 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Door Puzzle</title>
+  <title>RE Puzzles</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
-    <div id="header">
-      <h1>DOOR PUZZLE</h1>
-      <div id="score">Completed: <span id="score-num">0</span></div>
-    </div>
-
-    <div id="moves-display">
-      Moves: <span id="moves-num">0</span> / <span id="optimal-num">0</span>
-    </div>
-
-    <div id="keypad">
-      <button class="cell" data-idx="0">1</button>
-      <button class="cell" data-idx="1">2</button>
-      <button class="cell" data-idx="2">3</button>
-      <button class="cell" data-idx="3">4</button>
-      <button class="cell" data-idx="4">5</button>
-      <button class="cell" data-idx="5">6</button>
-      <button class="cell" data-idx="6">7</button>
-      <button class="cell" data-idx="7">8</button>
-      <button class="cell" data-idx="8">9</button>
-    </div>
-
-    <div id="buttons">
-      <button id="new-btn">New Puzzle</button>
-      <button id="reset-btn">Reset</button>
-    </div>
-  </div>
-
-  <div id="complete-overlay" class="hidden">
-    <div id="complete-text">COMPLETE</div>
-  </div>
-
-  <script src="app.js"></script>
+  <div id="app"></div>
+  <script src="dist/app.min.js"></script>
 </body>
 </html>

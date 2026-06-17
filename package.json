@@ -1,0 +1,12 @@
+{
+  "name": "repuzzles",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --minify",
+    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch --servedir=."
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}
