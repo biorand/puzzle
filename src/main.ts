@@ -1,8 +1,8 @@
 import { initAudioOnFirstClick, playChime, playTone, playMelody as pMelody } from './audio';
-import { puzzles, puzzlesByPath, puzzleOrder } from './puzzles/index';
+import { createMelodyPage } from './melody';
+import { puzzleOrder, puzzles, puzzlesByPath } from './puzzles/index';
 import type { ActionButton, PuzzleContext, PuzzleModule, StatusInfo } from './types';
 import { createFooter, createHeader, createMenu, createOverlay, createStatusBar } from './ui';
-import { createMelodyPage } from './melody';
 
 const app = document.getElementById('app')!;
 let currentPuzzle: { destroy(): void } | null = null;
@@ -130,7 +130,7 @@ function startPuzzle(mod: PuzzleModule): void {
       if (nextMod) {
         unlockNameEl.textContent = nextMod.name;
         unlockEl.style.display = '';
-        pMelody('C5/1.0[0.5] E5/1.0[0.4] G5/2.0[0.5]');
+        pMelody('C4/4 E4/4 G4/4 C5/4');
         overlay.classList.remove('hidden');
         await new Promise(r => setTimeout(r, 3000));
         overlay.classList.add('hidden');
