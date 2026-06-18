@@ -266,8 +266,13 @@ async function completeAnimation(): Promise<void> {
 
     await melody;
 
+    const nextMod = ctx.score.increment();
+    if (nextMod) {
+        await ctx.showOverlay(nextMod);
+        return;
+    }
+
     await ctx.showOverlay();
-    ctx.score.increment();
     generatePuzzle();
 
     ctx.setActions([
@@ -306,6 +311,7 @@ export const slidingBlock: PuzzleModule = {
                 wrap = null;
                 ctx = null;
                 tileEls = [];
+                playing = false;
             },
         };
     },

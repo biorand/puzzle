@@ -167,8 +167,13 @@ async function completeAnimation(): Promise<void> {
         await new Promise(r => setTimeout(r, 150));
     }
 
+    const nextMod = ctx.score.increment();
+    if (nextMod) {
+        await ctx.showOverlay(nextMod);
+        return;
+    }
+
     await ctx.showOverlay();
-    ctx.score.increment();
     generatePuzzle();
 
     ctx.setActions([
@@ -318,6 +323,7 @@ export const graveyard: PuzzleModule = {
                 pointerEl = null;
                 ctx = null;
                 c.innerHTML = '';
+                playing = false;
             },
         };
     },

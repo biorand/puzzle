@@ -144,8 +144,13 @@ async function completeStage(): Promise<void> {
       await new Promise(r => setTimeout(r, 200));
     }
 
+    const nextMod = ctx.score.increment();
+    if (nextMod) {
+      await ctx.showOverlay(nextMod);
+      return;
+    }
+
     await ctx.showOverlay();
-    ctx.score.increment();
     generatePuzzle();
 
     ctx.setActions([
@@ -237,6 +242,7 @@ export const stagla: PuzzleModule = {
         containerEl!.innerHTML = '';
         containerEl = null;
         ctx = null;
+        playing = false;
       },
     };
   },

@@ -34,6 +34,9 @@ let optimal = 0;
 let playing = false;
 let cells: HTMLButtonElement[] = [];
 let ctx: PuzzleContext | null = null;
+let cheatBuffer: number[] = [];
+let cheatCount = 0;
+let tutorialDiv: HTMLDivElement | null = null;
 
 function render(): void {
   for (let i = 0; i < 9; i++)
@@ -42,24 +45,76 @@ function render(): void {
 }
 
 function generatePuzzle(): void {
-  const maxD = Math.min(4, maxDist);
-  const d = Math.floor(Math.random() * maxD) + 1;
+  let d: number;
+  if (ctx && ctx.forceDifficulty !== undefined && ctx.forceDifficulty >= 1 && ctx.forceDifficulty <= maxDist) {
+    d = ctx.forceDifficulty;
+  } else {
+    const maxD = Math.min(4, maxDist);
+    d = Math.floor(Math.random() * maxD) + 1;
+  }
   const pool = groups[d];
   const pick = pool[Math.floor(Math.random() * pool.length)];
   initialState = pick;
   state = pick;
   moves = 0;
   optimal = d;
+  cheatBuffer = [];
+  // Update tutorial display
+  if (tutorialDiv) {
+    if (ctx && ctx.tutorialStep !== undefined) {
+      const stepNum = ctx.tutorialStep + 1;
+      const totalNum = ctx.tutorialTotal ?? 5;
+      const movesRequired = d;
+      tutorialDiv.textContent = `Tutorial ${stepNum}/${totalNum} — Solve in ${movesRequired} move${movesRequired !== 1 ? 's' : ''}`;
+      tutorialDiv.style.display = '';
+    } else {
+      tutorialDiv.style.display = 'none';
+    }
+  }
   render();
 }
 
 function press(idx: number): void {
   if (playing || !ctx) return;
+
+  // Check if this press completes a cheat code (before playing the normal tone)
+  const checkBuffer = [...cheatBuffer, idx + 1].slice(-4);
+  const isCheatMatch =
+    checkBuffer.length === 4 &&
+    checkBuffer[0] === 2 && checkBuffer[1] === 2 &&
+    checkBuffer[2] === 3 && checkBuffer[3] === 6;
+
   state ^= MASKS[idx];
   moves++;
-  ctx.playTone(idx / 8);
+
+  // Skip normal tone when cheat matches so melody notes are clearly audible
+  if (!isCheatMatch) ctx.playTone(idx / 8);
+
   render();
   if (state === SOLVED) completeAnimation();
+
+  // Cheat code: track "2236" rolling buffer
+  cheatBuffer.push(idx + 1);
+  if (cheatBuffer.length > 4) cheatBuffer.shift();
+
+  if (isCheatMatch) {
+    cheatCount++;
+    if (cheatCount === 1) {
+      ctx!.playMelody('D5');
+    } else if (cheatCount === 2) {
+      ctx!.playMelody('E5');
+    } else if (cheatCount >= 3) {
+      cheatCount = 3;
+      const melody = ctx!.playMelody(
+        `
+        D5/3.0[0.3]
+        Z/0.8 E5/3.0[0.2.5]
+        Z/1.6 F5/5.0[0.2]
+        `
+      );
+      ctx!.onCheatUnlockAll?.(() => melody);
+    }
+  }
 }
 
 async function completeAnimation(): Promise<void> {
@@ -73,9 +128,13 @@ async function completeAnimation(): Promise<void> {
     cells[i].classList.remove('orange');
   }
 
-  await ctx.showOverlay();
+  const nextMod = ctx.score.increment();
+  if (nextMod) {
+    await ctx.showOverlay(nextMod);
+    return;
+  }
 
-  ctx.score.increment();
+  await ctx.showOverlay();
   generatePuzzle();
   ctx.setActions([
     {
@@ -122,6 +181,17 @@ export const door01: PuzzleModule = {
 
     generatePuzzle();
 
+    // Tutorial progress indicator
+    if (context.tutorialStep !== undefined) {
+      tutorialDiv = document.createElement('div');
+      tutorialDiv.id = 'keypad-tutorial';
+      const stepNum = context.tutorialStep + 1;
+      const totalNum = context.tutorialTotal ?? 5;
+      const movesRequired = context.forceDifficulty ?? 0;
+      tutorialDiv.textContent = `Tutorial ${stepNum}/${totalNum} — Solve in ${movesRequired} move${movesRequired !== 1 ? 's' : ''}`;
+      container.appendChild(tutorialDiv);
+    }
+
     ctx.setActions([
       {
         label: 'New Puzzle',
@@ -144,6 +214,10 @@ export const door01: PuzzleModule = {
         cells = [];
         container.innerHTML = '';
         ctx = null;
+        cheatBuffer = [];
+        cheatCount = 0;
+        tutorialDiv = null;
+        playing = false;
       },
     };
   },

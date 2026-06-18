@@ -12,15 +12,21 @@ export interface ActionButton {
 export interface PuzzleContext {
   setStatus(info: StatusInfo): void;
   setActions(buttons: ActionButton[]): void;
-  showOverlay(): Promise<void>;
+  showOverlay(nextMod?: PuzzleModule): Promise<void>;
   hideOverlay(): void;
   playTone(progress: number): void;
   playChime(): void;
   playMelody(notes: string): Promise<void>;
   score: {
     count: number;
-    increment(): void;
+    increment(): PuzzleModule | null;
   };
+
+  // Puzzle unlock / progression system
+  forceDifficulty?: number;
+  tutorialStep?: number;
+  tutorialTotal?: number;
+  onCheatUnlockAll?: (playMelodyFn?: () => Promise<void>) => void;
 }
 
 export interface PuzzleModule {

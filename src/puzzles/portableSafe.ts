@@ -129,9 +129,13 @@ async function completeAnimation(): Promise<void> {
     await new Promise(r => setTimeout(r, 100));
   }
 
-  await ctx.showOverlay();
+  const nextMod = ctx.score.increment();
+  if (nextMod) {
+    await ctx.showOverlay(nextMod);
+    return;
+  }
 
-  ctx.score.increment();
+  await ctx.showOverlay();
   generatePuzzle();
   ctx.setActions([
     { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
@@ -246,6 +250,7 @@ export const portableSafe: PuzzleModule = {
         container!.innerHTML = '';
         container = null;
         ctx = null;
+        playing = false;
       },
     };
   },

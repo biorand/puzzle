@@ -13,6 +13,14 @@ export const puzzles = new Map<string, PuzzleModule>([
   [slidingBlock.id, slidingBlock],
 ]);
 
+export const puzzleOrder = [
+  'door01',
+  'portableSafe',
+  'stagla',
+  'graveyard',
+  'slidingBlock',
+];
+
 export const puzzlesByPath = new Map<string, PuzzleModule>();
 for (const p of puzzles.values()) {
   puzzlesByPath.set(`${p.sourceGame}/${p.slug}`, p);

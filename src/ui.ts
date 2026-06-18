@@ -78,13 +78,21 @@ export function createOverlay(): HTMLElement {
   const overlay = document.createElement('div');
   overlay.id = 'complete-overlay';
   overlay.className = 'hidden';
-  overlay.innerHTML = '<div id="complete-text"></div>';
+  overlay.innerHTML = `
+    <div id="complete-text"></div>
+    <div id="completed-unlock" style="display:none">
+      <div id="completed-unlock-label">PUZZLE UNLOCKED</div>
+      <div id="completed-unlock-name"></div>
+    </div>
+  `;
   return overlay;
 }
 
 export interface MenuEntry {
   id: string;
   name: string;
+  unlocked: boolean;
+  requirementLabel?: string;
 }
 
 export function createMenu(
@@ -102,9 +110,24 @@ export function createMenu(
   for (const p of puzzles) {
     const card = document.createElement('button');
     card.className = 'menu-card';
-    card.textContent = p.name;
+    if (!p.unlocked) {
+      card.classList.add('locked');
+      card.disabled = true;
+    }
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'menu-card-name';
+    nameSpan.textContent = p.name;
+    card.appendChild(nameSpan);
+    if (!p.unlocked && p.requirementLabel) {
+      const reqSpan = document.createElement('span');
+      reqSpan.className = 'menu-card-req';
+      reqSpan.textContent = p.requirementLabel;
+      card.appendChild(reqSpan);
+    }
     card.dataset.id = p.id;
-    card.addEventListener('click', () => onSelect(p.id));
+    if (p.unlocked) {
+      card.addEventListener('click', () => onSelect(p.id));
+    }
     grid.appendChild(card);
   }
   return menu;
