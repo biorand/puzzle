@@ -17,6 +17,7 @@ let completedStages: boolean[] = [];
 let playing = false;
 let totalMoves = 0;
 let optimal = 0;
+let stageInitialStates: boolean[][] = [];
 
 let lightEls: HTMLDivElement[] = [];
 let labelEls: HTMLDivElement[] = [];
@@ -27,6 +28,7 @@ let ctx: PuzzleContext | null = null;
 
 function generateTargets(): void {
   stageTargets = [];
+  stageInitialStates = [];
   stageTargets[0] = Math.floor(Math.random() * 4);
   for (let i = 1; i < 3; i++) {
     let t: number;
@@ -35,11 +37,18 @@ function generateTargets(): void {
     } while (t === stageTargets[i - 1]);
     stageTargets[i] = t;
   }
+  for (let i = 0; i < 3; i++) {
+    let state: boolean[];
+    do {
+      state = Array.from({ length: 4 }, () => Math.random() < 0.5);
+    } while (state.every((v, j) => v === (j === stageTargets[i])));
+    stageInitialStates[i] = state;
+  }
   optimal = OPTIMAL_MAP[stageTargets[0]] + OPTIMAL_MAP[stageTargets[1]] + OPTIMAL_MAP[stageTargets[2]];
 }
 
 function resetState(): void {
-  lights = [false, false, false, false];
+  lights = stageInitialStates[0]?.slice() ?? [false, false, false, false];
   stage = 0;
   completedStages = [false, false, false];
   playing = false;
@@ -49,11 +58,13 @@ function resetState(): void {
 function generatePuzzle(): void {
   generateTargets();
   resetState();
+  ctx?.playTone(1);
   render();
 }
 
 function resetPuzzle(): void {
   resetState();
+  ctx?.playTone(1);
   render();
 }
 
@@ -143,7 +154,7 @@ async function completeStage(): Promise<void> {
     ]);
   } else {
     stage++;
-    lights = [false, false, false, false];
+    lights = stageInitialStates[stage].slice();
     ctx.playTone(1);
     render();
 
