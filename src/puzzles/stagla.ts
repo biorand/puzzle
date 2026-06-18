@@ -133,7 +133,7 @@ async function completeStage(): Promise<void> {
       await new Promise(r => setTimeout(r, 200));
     }
 
-    await ctx.showOverlay('COMPLETE', 3000);
+    await ctx.showOverlay();
     ctx.score.increment();
     generatePuzzle();
 

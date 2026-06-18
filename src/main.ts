@@ -58,10 +58,10 @@ function startPuzzle(mod: PuzzleModule): void {
       app.appendChild(createFooter(buttons));
     },
 
-    async showOverlay(text: string, ms = 2000): Promise<void> {
-      overlayText.textContent = text;
+    async showOverlay(): Promise<void> {
+      overlayText.textContent = 'COMPLETED';
       overlay.classList.remove('hidden');
-      await new Promise(r => setTimeout(r, ms));
+      await new Promise(r => setTimeout(r, 2000));
       overlay.classList.add('hidden');
     },
 

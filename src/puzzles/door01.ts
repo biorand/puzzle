@@ -73,7 +73,7 @@ async function completeAnimation(): Promise<void> {
     cells[i].classList.remove('orange');
   }
 
-  await ctx.showOverlay('COMPLETE', 3000);
+  await ctx.showOverlay();
 
   ctx.score.increment();
   generatePuzzle();

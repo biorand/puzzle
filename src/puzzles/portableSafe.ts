@@ -132,7 +132,7 @@ async function completeAnimation(): Promise<void> {
     await new Promise(r => setTimeout(r, 100));
   }
 
-  await ctx.showOverlay('UNLOCKED', 3000);
+  await ctx.showOverlay();
 
   ctx.score.increment();
   generatePuzzle();

@@ -167,7 +167,7 @@ async function completeAnimation(): Promise<void> {
         await new Promise(r => setTimeout(r, 150));
     }
 
-    await ctx.showOverlay('CLEARED', 3000);
+    await ctx.showOverlay();
     ctx.score.increment();
     generatePuzzle();
 

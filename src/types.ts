@@ -12,7 +12,7 @@ export interface ActionButton {
 export interface PuzzleContext {
   setStatus(info: StatusInfo): void;
   setActions(buttons: ActionButton[]): void;
-  showOverlay(text: string, ms?: number): Promise<void>;
+  showOverlay(): Promise<void>;
   hideOverlay(): void;
   playTone(progress: number): void;
   playChime(): void;
