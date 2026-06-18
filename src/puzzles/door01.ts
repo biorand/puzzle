@@ -1,4 +1,4 @@
-import type { PuzzleModule, PuzzleContext } from '../types';
+import type { PuzzleContext, PuzzleModule } from '../types';
 
 const MASKS = [0x00B, 0x017, 0x026, 0x059, 0x0BA, 0x134, 0x0C8, 0x1D0, 0x1A0];
 const SOLVED = 0x1FF;

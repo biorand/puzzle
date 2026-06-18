@@ -361,77 +361,34 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 200px;
+  min-height: 0;
   overflow: hidden;
-  padding: 20px;
-  padding-left: calc(20px + env(safe-area-inset-left, 0px));
-  padding-right: calc(20px + env(safe-area-inset-right, 0px));
 }
 
 /* ── portable safe ── */
 
-#safe-layout {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-#safe-left {
-  flex-shrink: 0;
-}
-
-#diff-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.diff-btn {
-  background: #1a1a1a;
-  border: 2px solid #444;
-  color: #888;
-  padding: 6px 14px;
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-align: left;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.diff-btn:hover {
-  border-color: #666;
-  color: #ccc;
-}
-
-.diff-btn.active {
-  border-color: #ff6600;
-  color: #ff6600;
-}
-
-#safe-right {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-
 #safe-ring-wrap {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#safe-ring-inner {
   position: relative;
-  width: 220px;
-  height: 220px;
-  flex-shrink: 0;
+  aspect-ratio: 1;
+  height: 100%;
 }
 
 .safe-light,
 .safe-arrow {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  margin-left: -9px;
-  margin-top: -9px;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
 }
 
 .safe-light {
@@ -449,12 +406,12 @@ body {
 
 .safe-arrow {
   position: absolute;
-  width: 43px;
-  height: 43px;
-  margin-left: -22px;
-  margin-top: -22px;
+  width: 54px;
+  height: 54px;
+  margin-left: -27px;
+  margin-top: -27px;
   color: #555;
-  font-size: 27px;
+  font-size: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,6 +432,7 @@ body {
   flex-direction: column;
   gap: 5px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .safe-row {
@@ -520,6 +478,7 @@ body {
   align-items: center;
   gap: 16px;
   width: 100%;
+  padding: 16px;
 }
 
 #stagla-lights-area {
@@ -788,7 +747,6 @@ body {
 
 button,
 .menu-card,
-.diff-btn,
 .safe-btn,
 .cell,
 .action-btn,
