@@ -743,6 +743,56 @@ body {
   background: #1a1a1a;
 }
 
+/* ── sliding block ── */
+
+#sliding-wrap {
+  position: relative;
+  width: min(100%, 420px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  touch-action: manipulation;
+}
+
+#sliding-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, #333 2px, transparent 2px),
+    linear-gradient(to bottom, #333 2px, transparent 2px);
+  background-size: calc(100% / 3) calc(100% / 3);
+  background-position: 0 0, 0 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sliding-tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: 2px solid #444;
+  border-radius: 4px;
+  background-color: #1a1a2a;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  transition: transform 0.15s ease-out;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 1;
+  will-change: transform;
+}
+
+.sliding-tile:active {
+  filter: brightness(0.7);
+}
+
+.sliding-tile:hover {
+  border-color: #ff6600;
+}
+
 /* ── re-enable touch for interactive elements ── */
 
 button,

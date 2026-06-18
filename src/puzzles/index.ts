@@ -2,6 +2,7 @@ import type { PuzzleModule } from '../types';
 import { door01 } from './door01';
 import { graveyard } from './graveyard';
 import { portableSafe } from './portableSafe';
+import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
 
 export const puzzles = new Map<string, PuzzleModule>([
@@ -9,6 +10,7 @@ export const puzzles = new Map<string, PuzzleModule>([
   [portableSafe.id, portableSafe],
   [stagla.id, stagla],
   [graveyard.id, graveyard],
+  [slidingBlock.id, slidingBlock],
 ]);
 
 export const puzzlesByPath = new Map<string, PuzzleModule>();

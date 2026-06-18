@@ -27,7 +27,7 @@
 - [ ] Insignia
 - [x] Graveyard
 - [ ] Church
-- [ ] Sliding block
+- [x] Sliding block
 
 ## RE 5
 
