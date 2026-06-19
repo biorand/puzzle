@@ -37,3 +37,5 @@ Good title examples:
 In the message, for a bug, explain the cause and fix.
 
 DO NOT author any commit messages.
+DO NOT ask user for the commit message.
+DO NOT push or pull changes. Only stage and commit changes.

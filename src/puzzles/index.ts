@@ -1,6 +1,6 @@
 import type { PuzzleModule } from '../types';
-import { keypad } from './keypad';
 import { graveyard } from './graveyard';
+import { keypad } from './keypad';
 import { portableSafe } from './portableSafe';
 import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
