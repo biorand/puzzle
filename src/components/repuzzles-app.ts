@@ -306,9 +306,9 @@ export class RepuzzlesApp extends LitElement {
       return html`
         <app-header title=${this._puzzleName} ?show-back @back=${this._onBack}></app-header>
         ${keyed(
-        this._puzzleKey,
-        html`<puzzle-host .module=${this._puzzleModule} .context=${this._context}></puzzle-host>`,
-      )}
+          this._puzzleKey,
+          html`<puzzle-host .module=${this._puzzleModule} .context=${this._context}></puzzle-host>`,
+        )}
         <status-bar
           .moves=${this._moves}
           .optimal=${this._optimal}
