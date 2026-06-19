@@ -1,5 +1,9 @@
 let audioCtx: AudioContext | null = null;
 
+function isSoundEnabled(): boolean {
+  return localStorage.getItem('repuzzles-sound-enabled') !== 'false';
+}
+
 function initAudio(): AudioContext {
   if (!audioCtx)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,6 +17,7 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 export function playTone(progress: number): void {
+  if (!isSoundEnabled()) return;
   const ctx = initAudio();
   const now = ctx.currentTime;
   const freq = lerp(400, 1000, progress);
@@ -38,6 +43,7 @@ const NOTE_FREQ: Record<string, number> = {
 };
 
 export function playMelody(notes: string): Promise<void> {
+  if (!isSoundEnabled()) return Promise.resolve();
   const ctx = initAudio();
   const TICK = 0.1;
   const startTime = ctx.currentTime;
@@ -211,6 +217,7 @@ function playFreq(
 }
 
 export function playChime(): void {
+  if (!isSoundEnabled()) return;
   const ctx = initAudio();
   const now = ctx.currentTime;
   const notes = [523.25, 659.25, 783.99]; // C5, E5, G5

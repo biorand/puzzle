@@ -8,11 +8,17 @@ import './app-footer';
 import './app-header';
 import './complete-overlay';
 import './melody-composer';
+import './settings-page';
 import './puzzle-host';
 import './puzzle-menu';
 import './status-bar';
 
-type Page = 'menu' | 'puzzle' | 'melody';
+interface UnlockData {
+  tutorialStep: number;
+  unlockedAll: boolean;
+}
+
+type Page = 'menu' | 'puzzle' | 'melody' | 'settings';
 
 export class RepuzzlesApp extends LitElement {
   @property() private _page: Page = 'menu';
@@ -58,6 +64,11 @@ export class RepuzzlesApp extends LitElement {
 
     if (hash === 'melody') {
       this._page = 'melody';
+      return;
+    }
+
+    if (hash === 'settings') {
+      this._page = 'settings';
       return;
     }
 
@@ -141,6 +152,14 @@ export class RepuzzlesApp extends LitElement {
   }
 
   private _onBack(): void {
+    location.hash = '#/';
+  }
+
+  private _onSettings(): void {
+    location.hash = '#/settings';
+  }
+
+  private _onResetAll(): void {
     location.hash = '#/';
   }
 
@@ -319,8 +338,16 @@ export class RepuzzlesApp extends LitElement {
       `;
     }
 
+    if (this._page === 'settings') {
+      return html`
+        <app-header title="Settings" ?show-back @back=${this._onBack}></app-header>
+        <settings-page @reset=${this._onResetAll}></settings-page>
+      `;
+    }
+
     // Menu page
     return html`
+      <app-header title="RE Puzzles" ?show-settings @settings=${this._onSettings}></app-header>
       <puzzle-menu .entries=${this._menuEntries} @select=${this._onMenuSelect}></puzzle-menu>
     `;
   }
