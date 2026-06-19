@@ -11,7 +11,7 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test",
+    "e2e": "node scripts/e2e.mjs",
     "verify": "npm run format && npm run lint && npm run test && npm run e2e"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "esbuild": "^0.25.0",
     "eslint": "^9.17.0",
     "eslint-plugin-lit": "^1.15.0",
+    "get-port": "^7.2.0",
     "globals": "^15.14.0",
     "happy-dom": "^20.10.6",
     "http-server": "^14.1.1",
