@@ -134,6 +134,7 @@ export class RepuzzlesApp extends LitElement {
       .map((p) => ({
         id: p.id,
         name: p.name,
+        thumbnail: p.thumbnail,
         unlocked: this._isUnlocked(p.id),
         requirementLabel: this._getRequirementLabel(p.id),
       }));

@@ -219,11 +219,26 @@ function buildGrid(): void {
   container!.appendChild(grid);
 }
 
+const SAFE_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <circle cx="60" cy="60" r="50" stroke="#555" stroke-width="5"/>
+  <circle cx="60" cy="60" r="35" stroke="#ff6600" stroke-width="4"/>
+  <circle cx="60" cy="60" r="8" fill="#ff6600"/>
+  <line x1="60" y1="10" x2="60" y2="22" stroke="#ff6600" stroke-width="3"/>
+  <line x1="60" y1="98" x2="60" y2="110" stroke="#555" stroke-width="3"/>
+  <line x1="10" y1="60" x2="22" y2="60" stroke="#555" stroke-width="3"/>
+  <line x1="98" y1="60" x2="110" y2="60" stroke="#555" stroke-width="3"/>
+  <line x1="25" y1="25" x2="33" y2="33" stroke="#555" stroke-width="2"/>
+  <line x1="95" y1="25" x2="87" y2="33" stroke="#555" stroke-width="2"/>
+  <line x1="95" y1="95" x2="87" y2="87" stroke="#555" stroke-width="2"/>
+  <line x1="25" y1="95" x2="33" y2="87" stroke="#555" stroke-width="2"/>
+</svg>`;
+
 export const portableSafe: PuzzleModule = {
   id: 'portableSafe',
   slug: 'portable-safe',
   sourceGame: 're2r',
   name: 'Portable Safe',
+  thumbnail: SAFE_THUMB,
 
   create(c: HTMLElement, context: PuzzleContext) {
     container = c;

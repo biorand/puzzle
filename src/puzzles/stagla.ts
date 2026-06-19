@@ -193,11 +193,24 @@ async function completeStage(): Promise<void> {
   playing = false;
 }
 
+const STAGLA_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <rect x="15" y="15" width="90" height="90" rx="10" stroke="#555" stroke-width="3" fill="none"/>
+  <circle cx="40" cy="40" r="14" fill="#ff6600"/>
+  <circle cx="80" cy="40" r="14" fill="#555"/>
+  <circle cx="40" cy="80" r="14" fill="#555"/>
+  <circle cx="80" cy="80" r="14" fill="#555"/>
+  <text x="40" y="45" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">A</text>
+  <text x="80" y="45" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">B</text>
+  <text x="40" y="85" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">C</text>
+  <text x="80" y="85" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">D</text>
+</svg>`;
+
 export const stagla: PuzzleModule = {
   id: 'stagla',
   slug: 'stagla',
   sourceGame: 're3',
   name: 'Stagla',
+  thumbnail: STAGLA_THUMB,
 
   create(c: HTMLElement, context: PuzzleContext) {
     containerEl = c;

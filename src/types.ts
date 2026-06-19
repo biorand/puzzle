@@ -32,6 +32,7 @@ export interface PuzzleContext {
 export interface MenuEntry {
   id: string;
   name: string;
+  thumbnail: string;
   unlocked: boolean;
   requirementLabel?: string;
 }
@@ -41,5 +42,6 @@ export interface PuzzleModule {
   slug: string;
   sourceGame: string;
   name: string;
+  thumbnail: string;
   create(container: HTMLElement, ctx: PuzzleContext): { destroy(): void };
 }

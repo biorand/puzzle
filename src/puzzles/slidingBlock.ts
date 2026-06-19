@@ -290,11 +290,32 @@ async function completeAnimation(): Promise<void> {
 
 // ── Module ──
 
+const SLIDING_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <rect x="6" y="6" width="34" height="34" rx="5" fill="#ff6600"/>
+  <text x="23" y="29" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">1</text>
+  <rect x="44" y="6" width="34" height="34" rx="5" fill="#555"/>
+  <text x="61" y="29" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">2</text>
+  <rect x="82" y="6" width="34" height="34" rx="5" fill="#555"/>
+  <text x="99" y="29" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">3</text>
+  <rect x="6" y="44" width="34" height="34" rx="5" fill="#555"/>
+  <text x="23" y="67" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">4</text>
+  <rect x="44" y="44" width="34" height="34" rx="5" fill="#555"/>
+  <text x="61" y="67" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">5</text>
+  <rect x="82" y="44" width="34" height="34" rx="5" fill="#555"/>
+  <text x="99" y="67" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">6</text>
+  <rect x="6" y="82" width="34" height="34" rx="5" fill="#555"/>
+  <text x="23" y="105" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">7</text>
+  <rect x="44" y="82" width="34" height="34" rx="5" fill="#555"/>
+  <text x="61" y="105" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">8</text>
+  <rect x="82" y="82" width="34" height="34" rx="5" fill="#222" stroke="#555" stroke-width="2"/>
+</svg>`;
+
 export const slidingBlock: PuzzleModule = {
   id: 'slidingBlock',
   slug: 'sliding-block',
   sourceGame: 're4',
   name: 'Sliding Block',
+  thumbnail: SLIDING_THUMB,
 
   create(container: HTMLElement, context: PuzzleContext) {
     ctx = context;

@@ -163,11 +163,24 @@ async function completeAnimation(): Promise<void> {
   playing = false;
 }
 
+const KEYPAD_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <rect x="10" y="10" width="28" height="28" rx="5" fill="#555"/>
+  <rect x="46" y="10" width="28" height="28" rx="5" fill="#ff6600"/>
+  <rect x="82" y="10" width="28" height="28" rx="5" fill="#555"/>
+  <rect x="10" y="46" width="28" height="28" rx="5" fill="#555"/>
+  <rect x="46" y="46" width="28" height="28" rx="5" fill="#ff6600"/>
+  <rect x="82" y="46" width="28" height="28" rx="5" fill="#555"/>
+  <rect x="10" y="82" width="28" height="28" rx="5" fill="#ff6600"/>
+  <rect x="46" y="82" width="28" height="28" rx="5" fill="#555"/>
+  <rect x="82" y="82" width="28" height="28" rx="5" fill="#555"/>
+</svg>`;
+
 export const keypad: PuzzleModule = {
   id: 'keypad',
   slug: 'keypad',
   sourceGame: 're1',
   name: 'Keypad',
+  thumbnail: KEYPAD_THUMB,
 
   create(container: HTMLElement, context: PuzzleContext) {
     ctx = context;

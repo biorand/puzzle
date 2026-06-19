@@ -195,11 +195,24 @@ async function completeAnimation(): Promise<void> {
 
 // ── Module ──
 
+const GRAVEYARD_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <circle cx="60" cy="60" r="48" stroke="#555" stroke-width="4"/>
+  <circle cx="60" cy="60" r="12" fill="#ff6600"/>
+  <circle cx="60" cy="60" r="8" fill="#111"/>
+  <text x="60" y="18" text-anchor="middle" fill="#888" font-size="14">☠</text>
+  <text x="88" y="42" text-anchor="middle" fill="#888" font-size="12">★</text>
+  <text x="88" y="80" text-anchor="middle" fill="#888" font-size="12">※</text>
+  <text x="60" y="104" text-anchor="middle" fill="#888" font-size="14">†</text>
+  <text x="30" y="80" text-anchor="middle" fill="#888" font-size="12">◆</text>
+  <text x="30" y="42" text-anchor="middle" fill="#888" font-size="12">◈</text>
+</svg>`;
+
 export const graveyard: PuzzleModule = {
   id: 'graveyard',
   slug: 'graveyard',
   sourceGame: 're4',
   name: 'Graveyard',
+  thumbnail: GRAVEYARD_THUMB,
 
   create(c: HTMLElement, context: PuzzleContext) {
     ctx = context;
