@@ -6,39 +6,58 @@ const START = 0;
 const MIN = 0;
 const MAX = 100;
 
-// ── Precomputed valid configs ──
+// ── Per-switch values (each switch has its own X/Y) ──
 
-interface PuzzleConfig {
-  x: number;
-  y: number;
-  target: number;
+interface SwitchValues {
+    x: number;
+    y: number;
 }
 
-function hasValidPath(x: number, y: number, target: number): boolean {
-  for (let mask = 0; mask < 32; mask++) {
-    let pos = 0;
-    let ok = true;
-    for (let i = 0; i < 5; i++) {
-      pos += mask & (1 << i) ? x : -y;
-      if (pos < MIN || pos > MAX) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok && pos === target) return true;
-  }
-  return false;
+function randInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const CONFIGS: PuzzleConfig[] = [];
-for (let x = 20; x <= 60; x++) {
-  for (let y = 5; y <= 40; y++) {
-    const target = 3 * x - 2 * y;
-    if (target < 25 || target > 95) continue;
-    if (hasValidPath(x, y, target)) {
-      CONFIGS.push({ x, y, target });
+function generateUniquePuzzle(): { values: SwitchValues[]; target: number } | null {
+    // First switch must be UP (can't go DOWN from position 0)
+    for (let attempt = 0; attempt < 200; attempt++) {
+        const bits: boolean[] = [true];
+        for (let i = 1; i < SWITCH_COUNT; i++) {
+            bits.push(Math.random() < 0.5);
+        }
+
+        const vals: SwitchValues[] = [];
+        let pos = 0;
+        let ok = true;
+
+        for (let i = 0; i < SWITCH_COUNT; i++) {
+            if (bits[i]) {
+                // UP: X moves the needle, Y is set > pos so DOWN crashes below 0
+                const maxX = Math.min(50, 100 - pos);
+                if (maxX < 8) {
+                    ok = false;
+                    break;
+                }
+                const x = randInt(8, maxX);
+                const y = Math.min(pos + randInt(1, 8), 99);
+                vals.push({ x, y });
+                pos += x;
+            } else {
+                // DOWN: Y moves the needle, X is set > 100-pos so UP crashes above 100
+                if (pos < 4) {
+                    ok = false;
+                    break;
+                }
+                const y = randInt(4, Math.min(30, pos));
+                const x = Math.min(100 - pos + randInt(1, 8), 99);
+                vals.push({ x, y });
+                pos -= y;
+            }
+        }
+
+        if (!ok || pos < 15 || pos > 95) continue;
+        return { values: vals, target: pos };
     }
-  }
+    return null;
 }
 
 // ── State ──
@@ -49,7 +68,6 @@ let upDown: boolean[] = [];
 let switchIdx = 0;
 let needle = START;
 let won = false;
-let config: PuzzleConfig = CONFIGS[0];
 const playingRef = { value: false };
 
 // ── DOM Refs ──
@@ -62,282 +80,307 @@ let upBtn: HTMLButtonElement | null = null;
 let downBtn: HTMLButtonElement | null = null;
 let flashEl: HTMLDivElement | null = null;
 let targetMarkerEl: HTMLDivElement | null = null;
+let switchValues: SwitchValues[] = [];
+let currentTarget = 50;
+
+function updateButtonLabels(): void {
+    if (!upBtn || !downBtn) return;
+    if (switchIdx < SWITCH_COUNT) {
+        upBtn.textContent = `▲ UP (+${switchValues[switchIdx]?.x ?? '?'})`;
+        downBtn.textContent = `▼ DOWN (-${switchValues[switchIdx]?.y ?? '?'})`;
+    } else {
+        upBtn.textContent = '▲ UP';
+        downBtn.textContent = '▼ DOWN';
+    }
+}
 
 // ── Render ──
 
 function render(): void {
-  if (!needleEl) return;
-  const pct = Math.round((needle / MAX) * 100);
-  needleEl.style.left = `${pct}%`;
+    if (!needleEl) return;
+    const pct = Math.round((needle / MAX) * 100);
+    needleEl.style.left = `${pct}%`;
 
-  for (let i = 0; i < SWITCH_COUNT; i++) {
-    const col = switchCols[i];
-    if (!col) continue;
-    col.classList.toggle('pp-active', i === switchIdx && !won);
+    for (let i = 0; i < SWITCH_COUNT; i++) {
+        const col = switchCols[i];
+        if (!col) continue;
+        col.classList.toggle('pp-active', i === switchIdx && !won);
 
-    const lever = col.querySelector('.pp-lever') as HTMLDivElement;
-    if (lever) {
-      if (i < upDown.length) {
-        lever.classList.toggle('pp-up', upDown[i]);
-        lever.classList.toggle('pp-down', !upDown[i]);
-        lever.classList.toggle('pp-set', true);
-      } else {
-        lever.classList.remove('pp-up', 'pp-down', 'pp-set');
-      }
+        const lever = col.querySelector('.pp-lever') as HTMLDivElement;
+        if (lever) {
+            if (i < upDown.length) {
+                lever.classList.toggle('pp-up', upDown[i]);
+                lever.classList.toggle('pp-down', !upDown[i]);
+                lever.classList.toggle('pp-set', true);
+            } else {
+                lever.classList.remove('pp-up', 'pp-down', 'pp-set');
+            }
+        }
     }
-  }
 
-  const disabled = switchIdx >= SWITCH_COUNT || won || playingRef.value;
-  if (upBtn) upBtn.disabled = disabled;
-  if (downBtn) downBtn.disabled = disabled;
+    const disabled = switchIdx >= SWITCH_COUNT || won || playingRef.value;
+    if (upBtn) upBtn.disabled = disabled;
+    if (downBtn) downBtn.disabled = disabled;
 
-  if (targetMarkerEl) {
-    targetMarkerEl.style.left = `${config.target}%`;
-  }
+    if (targetMarkerEl) {
+        targetMarkerEl.style.left = `${currentTarget}%`;
+    }
 
-  if (ctx) ctx.setStatus({ moves: switchIdx, optimal: SWITCH_COUNT });
+    updateButtonLabels();
+
+    if (ctx) ctx.setStatus({ moves: switchIdx, optimal: SWITCH_COUNT });
 }
 
 // ── Game Logic ──
 
 function resetState(): void {
-  upDown = [];
-  switchIdx = 0;
-  needle = START;
-  won = false;
-  playingRef.value = false;
-  render();
+    upDown = [];
+    switchIdx = 0;
+    needle = START;
+    won = false;
+    playingRef.value = false;
+    render();
 }
 
 function generatePuzzle(): void {
-  config = CONFIGS[Math.floor(Math.random() * CONFIGS.length)];
-  for (const el of stepUpLabels) {
-    el.textContent = `+${config.x}`;
-  }
-  for (const el of stepDownLabels) {
-    el.textContent = `-${config.y}`;
-  }
-  if (upBtn) upBtn.textContent = `▲ UP (+${config.x})`;
-  if (downBtn) downBtn.textContent = `▼ DOWN (-${config.y})`;
-  resetState();
+    const puzzle = generateUniquePuzzle();
+    if (!puzzle) {
+        // Fallback — extremely unlikely
+        switchValues = [
+            { x: 30, y: 5 },
+            { x: 25, y: 8 },
+            { x: 20, y: 12 },
+            { x: 15, y: 99 },
+            { x: 10, y: 99 },
+        ];
+        currentTarget = 80;
+    } else {
+        switchValues = puzzle.values;
+        currentTarget = puzzle.target;
+    }
+    for (let i = 0; i < SWITCH_COUNT; i++) {
+        stepUpLabels[i].textContent = `+${switchValues[i].x}`;
+        stepDownLabels[i].textContent = `-${switchValues[i].y}`;
+    }
+    resetState();
 }
 
 function flashAndReset(): Promise<void> {
-  return new Promise((resolve) => {
-    if (!flashEl) {
-      resetState();
-      resolve();
-      return;
-    }
-    flashEl.style.opacity = '1';
-    flashEl.style.transition = 'none';
-    void flashEl.offsetWidth;
-    flashEl.style.transition = 'opacity 0.5s ease';
-    flashEl.style.opacity = '0';
-    setTimeout(() => {
-      resetState();
-      resolve();
-    }, 600);
-  });
+    return new Promise((resolve) => {
+        if (!flashEl) {
+            resetState();
+            resolve();
+            return;
+        }
+        flashEl.style.opacity = '1';
+        flashEl.style.transition = 'none';
+        void flashEl.offsetWidth;
+        flashEl.style.transition = 'opacity 0.5s ease';
+        flashEl.style.opacity = '0';
+        setTimeout(() => {
+            resetState();
+            resolve();
+        }, 600);
+    });
 }
 
 function playFailTone(): void {
-  try {
-    const actx = new (
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    )();
-    if (actx.state === 'suspended') actx.resume();
-    const now = actx.currentTime;
-    const osc = actx.createOscillator();
-    const gain = actx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(110, now);
-    osc.frequency.linearRampToValueAtTime(80, now + 0.25);
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc.connect(gain).connect(actx.destination);
-    osc.start(now);
-    osc.stop(now + 0.3);
-  } catch {
-    /* audio may not be available */
-  }
+    try {
+        const actx = new (
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        )();
+        if (actx.state === 'suspended') actx.resume();
+        const now = actx.currentTime;
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain).connect(actx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    } catch {
+        /* audio may not be available */
+    }
 }
 
 function setActions(): void {
-  ctx?.setActions(makeActions(playingRef, generatePuzzle, resetState));
+    ctx?.setActions(makeActions(playingRef, generatePuzzle, resetState));
 }
 
 async function press(isUp: boolean): Promise<void> {
-  if (switchIdx >= SWITCH_COUNT || won || playingRef.value || !ctx) return;
-  playingRef.value = true;
+    if (switchIdx >= SWITCH_COUNT || won || playingRef.value || !ctx) return;
+    playingRef.value = true;
 
-  const step = isUp ? config.x : -config.y;
-  const next = needle + step;
+    const step = isUp ? switchValues[switchIdx].x : -switchValues[switchIdx].y;
+    const next = needle + step;
 
-  if (next < MIN || next > MAX) {
-    // Move needle to the boundary so the user sees where it went off
-    needle = next < MIN ? MIN : MAX;
-    render();
-    await new Promise((r) => setTimeout(r, 400));
-    playFailTone();
-    await flashAndReset();
-    setActions();
-    playingRef.value = false;
-    return;
-  }
-
-  upDown[switchIdx] = isUp;
-  needle = next;
-  switchIdx++;
-  try {
-    ctx.playTone(needle / MAX);
-  } catch {
-    /* audio may not be available */
-  }
-
-  if (switchIdx === SWITCH_COUNT) {
-    if (needle === config.target) {
-      won = true;
-      render();
-      playingRef.value = false;
-      await completePuzzle(
-        ctx,
-        playingRef,
-        async () => {
-          if (!needleEl) return;
-          for (let f = 0; f < 5; f++) {
-            needleEl.style.opacity = '0';
-            await new Promise((r) => setTimeout(r, 120));
-            needleEl.style.opacity = '1';
-            await new Promise((r) => setTimeout(r, 120));
-          }
-        },
-        generatePuzzle,
-        resetState,
-      );
-    } else {
-      render();
-      playingRef.value = false;
-      await flashAndReset();
-      setActions();
+    if (next < MIN || next > MAX) {
+        // Move needle to the boundary so the user sees where it went off
+        needle = next < MIN ? MIN : MAX;
+        render();
+        await new Promise((r) => setTimeout(r, 400));
+        playFailTone();
+        await flashAndReset();
+        setActions();
+        playingRef.value = false;
+        return;
     }
-  } else {
-    playingRef.value = false;
-    render();
-  }
+
+    upDown[switchIdx] = isUp;
+    needle = next;
+    switchIdx++;
+    try {
+        ctx.playTone(needle / MAX);
+    } catch {
+        /* audio may not be available */
+    }
+
+    if (switchIdx === SWITCH_COUNT) {
+        if (needle === currentTarget) {
+            won = true;
+            render();
+            playingRef.value = false;
+            await completePuzzle(
+                ctx,
+                playingRef,
+                async () => {
+                    if (!needleEl) return;
+                    for (let f = 0; f < 5; f++) {
+                        needleEl.style.opacity = '0';
+                        await new Promise((r) => setTimeout(r, 120));
+                        needleEl.style.opacity = '1';
+                        await new Promise((r) => setTimeout(r, 120));
+                    }
+                },
+                generatePuzzle,
+                resetState,
+            );
+        } else {
+            render();
+            playingRef.value = false;
+            await flashAndReset();
+            setActions();
+        }
+    } else {
+        playingRef.value = false;
+        render();
+    }
 }
 
 // ── DOM Build ──
 
 function buildMeter(parent: HTMLElement): void {
-  const wrap = document.createElement('div');
-  wrap.id = 'pp-meter';
+    const wrap = document.createElement('div');
+    wrap.id = 'pp-meter';
 
-  // Labels row (numbers 0-100 every 10)
-  const labels = document.createElement('div');
-  labels.className = 'pp-meter-labels';
-  for (let v = 0; v <= MAX; v += 10) {
-    const span = document.createElement('span');
-    span.className = 'pp-label';
-    span.textContent = String(v);
-    span.style.left = `${v}%`;
-    labels.appendChild(span);
-  }
-  wrap.appendChild(labels);
+    // Labels row (numbers 0-100 every 10)
+    const labels = document.createElement('div');
+    labels.className = 'pp-meter-labels';
+    for (let v = 0; v <= MAX; v += 10) {
+        const span = document.createElement('span');
+        span.className = 'pp-label';
+        span.textContent = String(v);
+        span.style.left = `${v}%`;
+        labels.appendChild(span);
+    }
+    wrap.appendChild(labels);
 
-  // Ticks row
-  const ticks = document.createElement('div');
-  ticks.className = 'pp-meter-ticks';
-  for (let v = 0; v <= MAX; v += 10) {
-    const tick = document.createElement('div');
-    tick.className = 'pp-tick';
-    tick.style.left = `${v}%`;
-    ticks.appendChild(tick);
-  }
-  wrap.appendChild(ticks);
+    // Ticks row
+    const ticks = document.createElement('div');
+    ticks.className = 'pp-meter-ticks';
+    for (let v = 0; v <= MAX; v += 10) {
+        const tick = document.createElement('div');
+        tick.className = 'pp-tick';
+        tick.style.left = `${v}%`;
+        ticks.appendChild(tick);
+    }
+    wrap.appendChild(ticks);
 
-  // Track bar
-  const track = document.createElement('div');
-  track.className = 'pp-meter-track';
+    // Track bar
+    const track = document.createElement('div');
+    track.className = 'pp-meter-track';
 
-  const red = document.createElement('div');
-  red.className = 'pp-meter-red';
-  track.appendChild(red);
+    const red = document.createElement('div');
+    red.className = 'pp-meter-red';
+    track.appendChild(red);
 
-  targetMarkerEl = document.createElement('div');
-  targetMarkerEl.className = 'pp-target-marker';
-  track.appendChild(targetMarkerEl);
+    targetMarkerEl = document.createElement('div');
+    targetMarkerEl.className = 'pp-target-marker';
+    track.appendChild(targetMarkerEl);
 
-  wrap.appendChild(track);
+    wrap.appendChild(track);
 
-  // Needle pointer
-  const nw = document.createElement('div');
-  nw.className = 'pp-needle-wrap';
+    // Needle pointer
+    const nw = document.createElement('div');
+    nw.className = 'pp-needle-wrap';
 
-  needleEl = document.createElement('div');
-  needleEl.className = 'pp-needle';
-  nw.appendChild(needleEl);
+    needleEl = document.createElement('div');
+    needleEl.className = 'pp-needle';
+    nw.appendChild(needleEl);
 
-  wrap.appendChild(nw);
+    wrap.appendChild(nw);
 
-  parent.appendChild(wrap);
+    parent.appendChild(wrap);
 }
 
 function buildSwitches(parent: HTMLElement): void {
-  const wrap = document.createElement('div');
-  wrap.id = 'pp-switches';
+    const wrap = document.createElement('div');
+    wrap.id = 'pp-switches';
 
-  for (let i = 0; i < SWITCH_COUNT; i++) {
-    const col = document.createElement('div');
-    col.className = 'pp-switch-col';
+    for (let i = 0; i < SWITCH_COUNT; i++) {
+        const col = document.createElement('div');
+        col.className = 'pp-switch-col';
 
-    const ul = document.createElement('div');
-    ul.className = 'pp-step pp-step-up';
-    stepUpLabels.push(ul);
-    col.appendChild(ul);
+        const ul = document.createElement('div');
+        ul.className = 'pp-step pp-step-up';
+        stepUpLabels.push(ul);
+        col.appendChild(ul);
 
-    const lever = document.createElement('div');
-    lever.className = 'pp-lever';
-    col.appendChild(lever);
+        const lever = document.createElement('div');
+        lever.className = 'pp-lever';
+        col.appendChild(lever);
 
-    const dl = document.createElement('div');
-    dl.className = 'pp-step pp-step-down';
-    stepDownLabels.push(dl);
-    col.appendChild(dl);
+        const dl = document.createElement('div');
+        dl.className = 'pp-step pp-step-down';
+        stepDownLabels.push(dl);
+        col.appendChild(dl);
 
-    wrap.appendChild(col);
-    switchCols.push(col);
-  }
+        wrap.appendChild(col);
+        switchCols.push(col);
+    }
 
-  parent.appendChild(wrap);
+    parent.appendChild(wrap);
 }
 
 function buildActions(parent: HTMLElement): void {
-  const wrap = document.createElement('div');
-  wrap.id = 'pp-actions';
+    const wrap = document.createElement('div');
+    wrap.id = 'pp-actions';
 
-  const btns = document.createElement('div');
-  btns.id = 'pp-action-btns';
+    const btns = document.createElement('div');
+    btns.id = 'pp-action-btns';
 
-  upBtn = document.createElement('button');
-  upBtn.className = 'pp-action-btn pp-btn-up';
-  upBtn.addEventListener('click', () => press(true));
-  btns.appendChild(upBtn);
+    upBtn = document.createElement('button');
+    upBtn.className = 'pp-action-btn pp-btn-up';
+    upBtn.addEventListener('click', () => press(true));
+    btns.appendChild(upBtn);
 
-  downBtn = document.createElement('button');
-  downBtn.className = 'pp-action-btn pp-btn-down';
-  downBtn.addEventListener('click', () => press(false));
-  btns.appendChild(downBtn);
+    downBtn = document.createElement('button');
+    downBtn.className = 'pp-action-btn pp-btn-down';
+    downBtn.addEventListener('click', () => press(false));
+    btns.appendChild(downBtn);
 
-  wrap.appendChild(btns);
-  parent.appendChild(wrap);
+    wrap.appendChild(btns);
+    parent.appendChild(wrap);
 }
 
 function buildFlash(parent: HTMLElement): void {
-  flashEl = document.createElement('div');
-  flashEl.id = 'pp-flash';
-  parent.appendChild(flashEl);
+    flashEl = document.createElement('div');
+    flashEl.id = 'pp-flash';
+    parent.appendChild(flashEl);
 }
 
 // ── Thumbnail SVG ──
@@ -369,47 +412,47 @@ const PP_THUMB = `<svg viewBox="0 0 120 120" fill="none">
 // ── Module ──
 
 export const powerPanel: PuzzleModule = {
-  id: 'powerPanel',
-  slug: 'power-panel',
-  sourceGame: 're2',
-  name: 'Power Panel',
-  thumbnail: PP_THUMB,
+    id: 'powerPanel',
+    slug: 'power-panel',
+    sourceGame: 're2',
+    name: 'Power Panel',
+    thumbnail: PP_THUMB,
 
-  create(c: HTMLElement, context: PuzzleContext) {
-    container = c;
-    ctx = context;
+    create(c: HTMLElement, context: PuzzleContext) {
+        container = c;
+        ctx = context;
 
-    const layout = document.createElement('div');
-    layout.id = 'pp-layout';
-    container.appendChild(layout);
+        const layout = document.createElement('div');
+        layout.id = 'pp-layout';
+        container.appendChild(layout);
 
-    buildMeter(layout);
-    buildSwitches(layout);
-    buildActions(layout);
-    buildFlash(layout);
-    generatePuzzle();
-    render();
-    setActions();
+        buildMeter(layout);
+        buildSwitches(layout);
+        buildActions(layout);
+        buildFlash(layout);
+        generatePuzzle();
+        render();
+        setActions();
 
-    return {
-      destroy(): void {
-        switchCols = [];
-        stepUpLabels = [];
-        stepDownLabels = [];
-        needleEl = null;
-        targetMarkerEl = null;
-        upBtn = null;
-        downBtn = null;
-        flashEl = null;
-        container!.innerHTML = '';
-        container = null;
-        ctx = null;
-        upDown = [];
-        switchIdx = 0;
-        needle = START;
-        won = false;
-        playingRef.value = false;
-      },
-    };
-  },
+        return {
+            destroy(): void {
+                switchCols = [];
+                stepUpLabels = [];
+                stepDownLabels = [];
+                needleEl = null;
+                targetMarkerEl = null;
+                upBtn = null;
+                downBtn = null;
+                flashEl = null;
+                container!.innerHTML = '';
+                container = null;
+                ctx = null;
+                upDown = [];
+                switchIdx = 0;
+                needle = START;
+                won = false;
+                playingRef.value = false;
+            },
+        };
+    },
 };
