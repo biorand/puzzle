@@ -1,19 +1,9 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
+import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
 
 const ROWS = 3;
 const COLS = 3;
 const SIZE = ROWS * COLS;
-
-const UMBRELLA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M50,50 L90,50 Q70.48,58.48 78.28,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,78.28 Q58.48,70.48 50,90 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,90 Q41.52,70.48 21.72,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,78.28 Q29.52,58.48 10,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L10,50 Q29.52,41.52 21.72,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,21.72 Q41.52,29.52 50,10 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,10 Q58.48,29.52 78.28,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,21.72 Q70.48,41.52 90,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-</svg>`;
 
 const SVG_DATA_URI = `data:image/svg+xml,${encodeURIComponent(UMBRELLA_SVG)}`;
 
@@ -134,7 +124,7 @@ let board: number[] = [];
 let blankPos = 0;
 let moves = 0;
 let optimal = 0;
-let playing = false;
+const playingRef = { value: false };
 let initialBoard: number[] = [];
 
 let wrap: HTMLElement | null = null;
@@ -207,7 +197,7 @@ function generatePuzzle(): void {
   optimal = result.optimal;
   blankPos = indexOf(board, 0);
   moves = 0;
-  playing = false;
+  playingRef.value = false;
   initialBoard = [...board];
   render();
 }
@@ -216,14 +206,14 @@ function resetPuzzle(): void {
   board = [...initialBoard];
   blankPos = indexOf(board, 0);
   moves = 0;
-  playing = false;
+  playingRef.value = false;
   render();
 }
 
 // ── Interaction ──
 
 function pressTile(value: number): void {
-  if (playing || !ctx) return;
+  if (playingRef.value || !ctx) return;
 
   const pos = indexOf(board, value);
   if (pos === -1) return;
@@ -246,46 +236,27 @@ function pressTile(value: number): void {
 // ── Completion ──
 
 async function completeAnimation(): Promise<void> {
-  if (!ctx) return;
-  playing = true;
-  ctx.setActions([]);
+  await completePuzzle(
+    ctx,
+    playingRef,
+    async () => {
+      // RE4-style item fanfare (runs in parallel with flash)
+      const melody = ctx!.playMelody('G4E5C5D5E5C5G4');
 
-  // RE4-style item fanfare (runs in parallel with flash)
-  const melody = ctx.playMelody('G4E5C5D5E5C5G4');
+      // Flash the tiles
+      for (let f = 0; f < 3; f++) {
+        for (const el of tileEls)
+          el.style.filter = f % 2 === 0 ? 'brightness(0.5)' : 'brightness(1)';
+        await new Promise((r) => setTimeout(r, 180));
+      }
+      for (const el of tileEls) el.style.filter = '';
 
-  // Flash the tiles
-  for (let f = 0; f < 3; f++) {
-    for (const el of tileEls) el.style.filter = f % 2 === 0 ? 'brightness(0.5)' : 'brightness(1)';
-    await new Promise((r) => setTimeout(r, 180));
-  }
-  for (const el of tileEls) el.style.filter = '';
-
-  await melody;
-
-  const nextMod = ctx.score.increment();
-  if (nextMod) {
-    await ctx.showOverlay(nextMod);
-    return;
-  }
-
-  await ctx.showOverlay();
-  generatePuzzle();
-
-  ctx.setActions([
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        if (!playing) generatePuzzle();
-      },
+      await melody;
     },
-    {
-      label: 'Reset',
-      handler: () => {
-        if (!playing) resetPuzzle();
-      },
-    },
-  ]);
-  playing = false;
+    generatePuzzle,
+    resetPuzzle,
+    false,
+  );
 }
 
 // ── Module ──
@@ -323,20 +294,7 @@ export const slidingBlock: PuzzleModule = {
     buildDOM(container);
     generatePuzzle();
 
-    context.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) resetPuzzle();
-        },
-      },
-    ]);
+    context.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
 
     const onResize = () => render();
     window.addEventListener('resize', onResize);
@@ -348,7 +306,7 @@ export const slidingBlock: PuzzleModule = {
         wrap = null;
         ctx = null;
         tileEls = [];
-        playing = false;
+        playingRef.value = false;
       },
     };
   },

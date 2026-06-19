@@ -1,20 +1,10 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
+import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
 
 const N = 7;
 const STEPS = [3, 4];
 const ZODIAC = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 let currentSymbols: string[] = [];
-
-const UMBRELLA_SVG = `<svg viewBox="0 0 100 100" width="100%" height="100%">
-  <path d="M50,50 L90,50 Q70.48,58.48 78.28,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,78.28 Q58.48,70.48 50,90 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,90 Q41.52,70.48 21.72,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,78.28 Q29.52,58.48 10,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L10,50 Q29.52,41.52 21.72,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,21.72 Q41.52,29.52 50,10 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,10 Q58.48,29.52 78.28,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,21.72 Q70.48,41.52 90,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-</svg>`;
 
 // ── BFS precomputation ──
 
@@ -79,7 +69,7 @@ let lights = 0;
 let targetMask = 0;
 let moves = 0;
 let optimal = 0;
-let playing = false;
+const playingRef = { value: false };
 let pointerAngle = 0;
 
 // DOM refs
@@ -100,7 +90,7 @@ function generatePuzzle(): void {
   pos = 0;
   lights = 0;
   moves = 0;
-  playing = false;
+  playingRef.value = false;
   pointerAngle = 0;
   render();
 }
@@ -109,7 +99,7 @@ function resetPuzzle(): void {
   pos = 0;
   lights = 0;
   moves = 0;
-  playing = false;
+  playingRef.value = false;
   pointerAngle = 0;
   render();
 }
@@ -135,7 +125,7 @@ function render(): void {
 }
 
 function press(step: number): void {
-  if (playing || moving || !ctx) return;
+  if (playingRef.value || moving || !ctx) return;
   moving = true;
   for (const btn of btnEls) btn.disabled = true;
 
@@ -155,42 +145,20 @@ function press(step: number): void {
 }
 
 async function completeAnimation(): Promise<void> {
-  if (!ctx) return;
-  playing = true;
-  ctx.setActions([]);
-  ctx.playChime();
-
-  for (let f = 0; f < 5; f++) {
-    for (const el of symbolEls) el.classList.add('flash');
-    await new Promise((r) => setTimeout(r, 150));
-    for (const el of symbolEls) el.classList.remove('flash');
-    await new Promise((r) => setTimeout(r, 150));
-  }
-
-  const nextMod = ctx.score.increment();
-  if (nextMod) {
-    await ctx.showOverlay(nextMod);
-    return;
-  }
-
-  await ctx.showOverlay();
-  generatePuzzle();
-
-  ctx.setActions([
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        if (!playing) generatePuzzle();
-      },
+  await completePuzzle(
+    ctx,
+    playingRef,
+    async () => {
+      for (let f = 0; f < 5; f++) {
+        for (const el of symbolEls) el.classList.add('flash');
+        await new Promise((r) => setTimeout(r, 150));
+        for (const el of symbolEls) el.classList.remove('flash');
+        await new Promise((r) => setTimeout(r, 150));
+      }
     },
-    {
-      label: 'Reset',
-      handler: () => {
-        if (!playing) resetPuzzle();
-      },
-    },
-  ]);
-  playing = false;
+    generatePuzzle,
+    resetPuzzle,
+  );
 }
 
 // ── Module ──
@@ -335,20 +303,7 @@ export const graveyard: PuzzleModule = {
     generatePuzzle();
     // reposition after fonts load too
     setTimeout(() => positionDial(), 100);
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) resetPuzzle();
-        },
-      },
-    ]);
+    ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
 
     return {
       destroy() {
@@ -358,7 +313,7 @@ export const graveyard: PuzzleModule = {
         pointerEl = null;
         ctx = null;
         c.innerHTML = '';
-        playing = false;
+        playingRef.value = false;
       },
     };
   },

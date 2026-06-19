@@ -1,16 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-
-const UMBRELLA_SVG = `
-<svg viewBox="0 0 100 100" width="100%" height="100%">
-  <path d="M50,50 L90,50 Q70.48,58.48 78.28,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,78.28 Q58.48,70.48 50,90 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,90 Q41.52,70.48 21.72,78.28 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,78.28 Q29.52,58.48 10,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L10,50 Q29.52,41.52 21.72,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L21.72,21.72 Q41.52,29.52 50,10 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L50,10 Q58.48,29.52 78.28,21.72 Z" fill="#cc0000" stroke="#000" stroke-width="1.2"/>
-  <path d="M50,50 L78.28,21.72 Q70.48,41.52 90,50 Z" fill="#fff" stroke="#000" stroke-width="1.2"/>
-</svg>`;
+import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
 
 const GRID_SIZE = 4;
 const NUM_BTNS = GRID_SIZE * 2;
@@ -18,7 +7,7 @@ const NUM_BTNS = GRID_SIZE * 2;
 let chain = 0;
 let startIdx = -1;
 let moves = 0;
-let playing = false;
+const playingRef = { value: false };
 let mapping: number[] = [];
 
 let container: HTMLElement | null = null;
@@ -61,7 +50,7 @@ function generatePuzzle(): void {
 }
 
 function press(idx: number): void {
-  if (playing || !ctx) return;
+  if (playingRef.value || !ctx) return;
 
   const lightIdx = mapping[idx];
 
@@ -91,7 +80,7 @@ function press(idx: number): void {
 }
 
 function resetPuzzle(): void {
-  if (playing) return;
+  if (playingRef.value) return;
   chain = 0;
   startIdx = -1;
   moves = 0;
@@ -99,45 +88,29 @@ function resetPuzzle(): void {
 }
 
 async function completeAnimation(): Promise<void> {
-  if (!ctx) return;
-  playing = true;
-  ctx.playChime();
-  ctx.setActions([]);
+  await completePuzzle(
+    ctx,
+    playingRef,
+    async () => {
+      for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain', i % 2 === 0);
 
-  for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain', i % 2 === 0);
+      const melody = ctx!.playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
 
-  const melody = ctx.playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
+      const interval = setInterval(() => {
+        for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain');
+      }, 500);
 
-  const interval = setInterval(() => {
-    for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain');
-  }, 500);
+      await melody;
+      clearInterval(interval);
 
-  await melody;
-  clearInterval(interval);
-
-  for (let i = 0; i < NUM_BTNS; i++) {
-    ringLights[i].classList.remove('chain');
-    await new Promise((r) => setTimeout(r, 100));
-  }
-
-  const nextMod = ctx.score.increment();
-  if (nextMod) {
-    await ctx.showOverlay(nextMod);
-    return;
-  }
-
-  await ctx.showOverlay();
-  generatePuzzle();
-  ctx.setActions([
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        if (!playing) generatePuzzle();
-      },
+      for (let i = 0; i < NUM_BTNS; i++) {
+        ringLights[i].classList.remove('chain');
+        await new Promise((r) => setTimeout(r, 100));
+      }
     },
-    { label: 'Reset', handler: resetPuzzle },
-  ]);
-  playing = false;
+    generatePuzzle,
+    resetPuzzle,
+  );
 }
 
 function buildRing(): void {
@@ -250,15 +223,7 @@ export const portableSafe: PuzzleModule = {
     buildGrid();
     generatePuzzle();
 
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      { label: 'Reset', handler: resetPuzzle },
-    ]);
+    ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
 
     return {
       destroy(): void {
@@ -268,7 +233,7 @@ export const portableSafe: PuzzleModule = {
         container!.innerHTML = '';
         container = null;
         ctx = null;
-        playing = false;
+        playingRef.value = false;
       },
     };
   },

@@ -1,4 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
+import { completePuzzle, makeActions } from './shared';
 
 const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
 const SOLVED = 0x1ff;
@@ -31,7 +32,7 @@ let state = SOLVED;
 let initialState = SOLVED;
 let moves = 0;
 let optimal = 0;
-let playing = false;
+const playingRef = { value: false };
 let cells: HTMLButtonElement[] = [];
 let ctx: PuzzleContext | null = null;
 let cheatBuffer: number[] = [];
@@ -79,7 +80,7 @@ function generatePuzzle(): void {
 }
 
 function press(idx: number): void {
-  if (playing || !ctx) return;
+  if (playingRef.value || !ctx) return;
 
   // Check if this press completes a cheat code (before playing the normal tone)
   const checkBuffer = [...cheatBuffer, idx + 1].slice(-4);
@@ -123,44 +124,25 @@ function press(idx: number): void {
   }
 }
 
+function resetPuzzle(): void {
+  state = initialState;
+  moves = 0;
+  render();
+}
+
 async function completeAnimation(): Promise<void> {
-  if (!ctx) return;
-  playing = true;
-  ctx.playChime();
-  ctx.setActions([]);
-
-  for (let i = 8; i >= 0; i--) {
-    await new Promise((r) => setTimeout(r, 120));
-    cells[i].classList.remove('orange');
-  }
-
-  const nextMod = ctx.score.increment();
-  if (nextMod) {
-    await ctx.showOverlay(nextMod);
-    return;
-  }
-
-  await ctx.showOverlay();
-  generatePuzzle();
-  ctx.setActions([
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        if (!playing) generatePuzzle();
-      },
+  await completePuzzle(
+    ctx,
+    playingRef,
+    async () => {
+      for (let i = 8; i >= 0; i--) {
+        await new Promise((r) => setTimeout(r, 120));
+        cells[i].classList.remove('orange');
+      }
     },
-    {
-      label: 'Reset',
-      handler: () => {
-        if (!playing) {
-          state = initialState;
-          moves = 0;
-          render();
-        }
-      },
-    },
-  ]);
-  playing = false;
+    generatePuzzle,
+    resetPuzzle,
+  );
 }
 
 const KEYPAD_THUMB = `<svg viewBox="0 0 120 120" fill="none">
@@ -212,24 +194,7 @@ export const keypad: PuzzleModule = {
       container.appendChild(tutorialDiv);
     }
 
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) {
-            state = initialState;
-            moves = 0;
-            render();
-          }
-        },
-      },
-    ]);
+    ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
 
     return {
       destroy(): void {
@@ -239,7 +204,7 @@ export const keypad: PuzzleModule = {
         cheatBuffer = [];
         cheatCount = 0;
         tutorialDiv = null;
-        playing = false;
+        playingRef.value = false;
       },
     };
   },

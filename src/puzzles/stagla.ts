@@ -1,4 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
+import { completePuzzle, makeActions } from './shared';
 
 const TOGGLES: number[][] = [
   [0, 1],
@@ -14,7 +15,7 @@ let lights: boolean[] = [];
 let stage = 0;
 let stageTargets: number[] = [];
 let completedStages: boolean[] = [];
-let playing = false;
+const playingRef = { value: false };
 let totalMoves = 0;
 let optimal = 0;
 let stageInitialStates: boolean[][] = [];
@@ -52,7 +53,7 @@ function resetState(): void {
   lights = stageInitialStates[0]?.slice() ?? [false, false, false, false];
   stage = 0;
   completedStages = [false, false, false];
-  playing = false;
+  playingRef.value = false;
   totalMoves = 0;
 }
 
@@ -99,7 +100,7 @@ function checkStageComplete(): boolean {
 }
 
 function press(idx: number): void {
-  if (playing || !ctx) return;
+  if (playingRef.value || !ctx) return;
   toggle(idx);
   totalMoves++;
   ctx.playTone(idx / 3);
@@ -111,7 +112,7 @@ function press(idx: number): void {
 
 async function completeStage(): Promise<void> {
   if (!ctx) return;
-  playing = true;
+  playingRef.value = true;
   const target = stageTargets[stage];
 
   for (let f = 0; f < 3; f++) {
@@ -128,69 +129,38 @@ async function completeStage(): Promise<void> {
 
   if (stage === 2) {
     render();
-
-    for (let f = 0; f < 5; f++) {
-      ctx.playTone(0.5);
-      for (let i = 0; i < 4; i++) {
-        lightEls[i].classList.add('flash');
-        labelEls[i].classList.add('flash');
-        lightEls[i].classList.add('on');
-      }
-      await new Promise((r) => setTimeout(r, 200));
-      for (let i = 0; i < 4; i++) {
-        lightEls[i].classList.remove('flash');
-        labelEls[i].classList.remove('flash');
-        lightEls[i].classList.remove('on');
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-
-    const nextMod = ctx.score.increment();
-    if (nextMod) {
-      await ctx.showOverlay(nextMod);
-      return;
-    }
-
-    await ctx.showOverlay();
-    generatePuzzle();
-
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
+    await completePuzzle(
+      ctx,
+      playingRef,
+      async () => {
+        for (let f = 0; f < 5; f++) {
+          ctx!.playTone(0.5);
+          for (let i = 0; i < 4; i++) {
+            lightEls[i].classList.add('flash');
+            labelEls[i].classList.add('flash');
+            lightEls[i].classList.add('on');
+          }
+          await new Promise((r) => setTimeout(r, 200));
+          for (let i = 0; i < 4; i++) {
+            lightEls[i].classList.remove('flash');
+            labelEls[i].classList.remove('flash');
+            lightEls[i].classList.remove('on');
+          }
+          await new Promise((r) => setTimeout(r, 200));
+        }
       },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) resetPuzzle();
-        },
-      },
-    ]);
-  } else {
-    stage++;
-    lights = stageInitialStates[stage].slice();
-    ctx.playTone(1);
-    render();
-
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) resetPuzzle();
-        },
-      },
-    ]);
+      generatePuzzle,
+      resetPuzzle,
+    );
+    return;
   }
 
-  playing = false;
+  stage++;
+  lights = stageInitialStates[stage].slice();
+  ctx.playTone(1);
+  render();
+  ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
+  playingRef.value = false;
 }
 
 const STAGLA_THUMB = `<svg viewBox="0 0 120 120" fill="none">
@@ -263,20 +233,7 @@ export const stagla: PuzzleModule = {
 
     generatePuzzle();
 
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          if (!playing) generatePuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          if (!playing) resetPuzzle();
-        },
-      },
-    ]);
+    ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
 
     return {
       destroy() {
@@ -286,7 +243,7 @@ export const stagla: PuzzleModule = {
         containerEl!.innerHTML = '';
         containerEl = null;
         ctx = null;
-        playing = false;
+        playingRef.value = false;
       },
     };
   },
