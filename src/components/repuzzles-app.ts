@@ -13,11 +13,6 @@ import './puzzle-host';
 import './puzzle-menu';
 import './status-bar';
 
-interface UnlockData {
-  tutorialStep: number;
-  unlockedAll: boolean;
-}
-
 type Page = 'menu' | 'puzzle' | 'melody' | 'settings';
 
 export class RepuzzlesApp extends LitElement {
@@ -347,7 +342,7 @@ export class RepuzzlesApp extends LitElement {
 
     // Menu page
     return html`
-      <app-header title="RE Puzzles" ?show-settings @settings=${this._onSettings}></app-header>
+      <app-header title="BioRand Puzzles" ?show-settings @settings=${this._onSettings}></app-header>
       <puzzle-menu .entries=${this._menuEntries} @select=${this._onMenuSelect}></puzzle-menu>
     `;
   }

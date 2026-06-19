@@ -34,6 +34,26 @@ export class SettingsPage extends LitElement {
   render() {
     return html`
       <div id="settings-wrap">
+        <!-- About -->
+        <div class="settings-section">
+          <div class="settings-section-title">About</div>
+          <div id="settings-about">
+            <div id="settings-about-name">BioRand Puzzles</div>
+            <div id="settings-about-credit">by IntelOrca</div>
+            <div id="settings-about-desc">A Resident Evil puzzle collection</div>
+          </div>
+        </div>
+
+        <!-- Audio -->
+        <div class="settings-section">
+          <div class="settings-section-title">Audio</div>
+          <label class="settings-toggle">
+            <input type="checkbox" ?checked=${this._soundEnabled} @change=${this._onSoundToggle} />
+            <span class="settings-toggle-slider"></span>
+            <span class="settings-toggle-label">Sound Effects</span>
+          </label>
+        </div>
+
         <!-- Data & Progress -->
         <div class="settings-section">
           <div class="settings-section-title">Data & Progress</div>
@@ -52,31 +72,8 @@ export class SettingsPage extends LitElement {
             ${this._confirmReset ? 'Confirm — Reset Everything' : 'Reset All Data'}
           </button>
           ${this._confirmReset
-            ? html`
-                <button id="settings-cancel-btn" @click=${this._onCancelReset}>
-                  Cancel
-                </button>
-              `
+            ? html` <button id="settings-cancel-btn" @click=${this._onCancelReset}>Cancel</button> `
             : ''}
-        </div>
-
-        <!-- Sound -->
-        <div class="settings-section">
-          <div class="settings-section-title">Sound</div>
-          <label class="settings-toggle">
-            <input type="checkbox" ?checked=${this._soundEnabled} @change=${this._onSoundToggle} />
-            <span class="settings-toggle-slider"></span>
-            <span class="settings-toggle-label">Sound Effects</span>
-          </label>
-        </div>
-
-        <!-- About -->
-        <div class="settings-section">
-          <div class="settings-section-title">About</div>
-          <div id="settings-about">
-            <div id="settings-about-name">RE Puzzles</div>
-            <div id="settings-about-desc">A Resident Evil puzzle collection</div>
-          </div>
         </div>
       </div>
     `;

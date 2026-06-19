@@ -25,7 +25,7 @@ export class PuzzleMenu extends LitElement {
   render() {
     return html`
       <div id="menu">
-        <h1>RESIDENT EVIL</h1>
+        <h1><span id="brand-first">B</span>IORAND</h1>
         <h2>Puzzle Collection</h2>
         <div id="menu-grid">
           ${this.entries.map(

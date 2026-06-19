@@ -10,7 +10,7 @@ test.describe('Puzzle Menu Grid', () => {
     });
 
     test('shows the title and subtitle', async ({ page }) => {
-        await expect(page.locator('#menu h1')).toHaveText('RESIDENT EVIL');
+        await expect(page.locator('#menu h1')).toHaveText('BIORAND');
         await expect(page.locator('#menu h2')).toHaveText('Puzzle Collection');
     });
 
