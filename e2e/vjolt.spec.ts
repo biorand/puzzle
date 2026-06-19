@@ -106,33 +106,37 @@ test.describe('V-JOLT Puzzle', () => {
     for (const action of solvePlan) {
       if (action.type === 'fill') {
         await page.locator('.vjolt-shelf-btn').nth(action.shelfIdx).click();
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(150);
       } else {
         // Find two bottles with values action.valA and action.valB
         const allBottles = page.locator('.vjolt-bottle');
         const positions: number[] = [];
 
-        for (let i = 0; i < 4; i++) {
-          const isE = await allBottles
-            .nth(i)
-            .evaluate((el) => el.classList.contains('empty'));
-          if (isE) continue;
+        for (const targetVal of [action.valA, action.valB]) {
+          for (let i = 0; i < 4; i++) {
+            if (positions.includes(i)) continue;
+            const isE = await allBottles
+              .nth(i)
+              .evaluate((el) => el.classList.contains('empty'));
+            if (isE) continue;
 
-          const txt = await allBottles
-            .nth(i)
-            .locator('.vjolt-bottle-value')
-            .textContent();
-          const v = parseInt((txt || '').replace('#', ''), 10);
+            const txt = await allBottles
+              .nth(i)
+              .locator('.vjolt-bottle-value')
+              .textContent();
+            const v = parseInt((txt || '').replace('#', ''), 10);
 
-          const target = positions.length === 0 ? action.valA : action.valB;
-          if (v === target) positions.push(i);
-          if (positions.length === 2) break;
+            if (v === targetVal) {
+              positions.push(i);
+              break;
+            }
+          }
         }
 
         await allBottles.nth(positions[0]).click();
-        await page.waitForTimeout(80);
+        await page.waitForTimeout(120);
         await allBottles.nth(positions[1]).click();
-        await page.waitForTimeout(80);
+        await page.waitForTimeout(120);
 
         await page.locator('.vjolt-btn-combine').click();
         await page.waitForTimeout(300);
