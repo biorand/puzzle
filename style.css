@@ -982,6 +982,7 @@ melody-composer {
 
 button,
 .menu-card,
+.lab-cell,
 .safe-btn,
 .cell,
 .action-btn,
@@ -1687,101 +1688,120 @@ button,
     border-color 0.15s,
     box-shadow 0.15s;
   overflow: hidden;
+  cursor: pointer;
 }
 
-.lab-start {
-  border-color: #0a0;
+.lab-start::after {
+  content: 'S';
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-size: 10px;
+  color: #0a0;
+  font-weight: 700;
+  font-family: 'Cutive Mono', monospace;
+  z-index: 3;
 }
 
-.lab-goal {
-  border-color: #f80;
+.lab-goal::after {
+  content: 'G';
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  font-size: 10px;
+  color: #f80;
+  font-weight: 700;
+  font-family: 'Cutive Mono', monospace;
+  z-index: 3;
 }
 
-.lab-red {
-  border-color: #a33;
-  background: #1a0808;
-}
-
+/* ── color classes: solid borders, neutral backgrounds, coloured arrows ── */
 .lab-blue {
-  border-color: #33a;
-  background: #08081a;
-}
-
-.lab-yellow {
-  border-color: #aa3;
-  background: #1a1a08;
+  border: 3px solid #2288ff;
+  background: #1a1a1a;
 }
 
 .lab-green {
-  border-color: #3a3;
-  background: #081a08;
+  border: 3px solid #22cc44;
+  background: #1a1a1a;
 }
 
-.lab-red.lab-powered {
-  animation: lab-glow-red 1.2s ease-in-out infinite alternate;
+.lab-yellow {
+  border: 3px solid #ffcc00;
+  background: #1a1a1a;
+}
+
+.lab-red {
+  border: 3px solid #ff3333;
+  background: #1a1a1a;
+}
+
+.lab-blue .lab-arrow {
+  color: #44aaff;
+}
+.lab-green .lab-arrow {
+  color: #44ff66;
+}
+.lab-yellow .lab-arrow {
+  color: #ffee44;
+}
+.lab-red .lab-arrow {
+  color: #ff4444;
 }
 
 .lab-blue.lab-powered {
-  animation: lab-glow-blue 1.2s ease-in-out infinite alternate;
-}
-
-.lab-yellow.lab-powered {
-  animation: lab-glow-yellow 1.2s ease-in-out infinite alternate;
+  background: #1a3a6a;
+  animation: lab-glow-blue 1.8s ease-in-out infinite alternate;
 }
 
 .lab-green.lab-powered {
-  animation: lab-glow-green 1.2s ease-in-out infinite alternate;
+  background: #1a4a2a;
+  animation: lab-glow-green 1.8s ease-in-out infinite alternate;
 }
 
-@keyframes lab-glow-red {
-  from {
-    box-shadow:
-      0 0 6px rgba(255, 68, 68, 0.2),
-      inset 0 0 8px rgba(255, 68, 68, 0.05);
-  }
-  to {
-    box-shadow:
-      0 0 18px rgba(255, 68, 68, 0.5),
-      inset 0 0 16px rgba(255, 68, 68, 0.15);
-  }
+.lab-yellow.lab-powered {
+  background: #5a4a00;
+  animation: lab-glow-yellow 1.8s ease-in-out infinite alternate;
+}
+
+.lab-red.lab-powered {
+  background: #5a1a1a;
+  animation: lab-glow-red 1.8s ease-in-out infinite alternate;
 }
 
 @keyframes lab-glow-blue {
   from {
-    box-shadow:
-      0 0 6px rgba(68, 136, 255, 0.2),
-      inset 0 0 8px rgba(68, 136, 255, 0.05);
+    box-shadow: 0 0 3px rgba(34, 136, 255, 0.1);
   }
   to {
-    box-shadow:
-      0 0 18px rgba(68, 136, 255, 0.5),
-      inset 0 0 16px rgba(68, 136, 255, 0.15);
-  }
-}
-
-@keyframes lab-glow-yellow {
-  from {
-    box-shadow:
-      0 0 6px rgba(255, 204, 0, 0.2),
-      inset 0 0 8px rgba(255, 204, 0, 0.05);
-  }
-  to {
-    box-shadow:
-      0 0 18px rgba(255, 204, 0, 0.5),
-      inset 0 0 16px rgba(255, 204, 0, 0.15);
+    box-shadow: 0 0 10px rgba(34, 136, 255, 0.3);
   }
 }
 
 @keyframes lab-glow-green {
   from {
-    box-shadow:
-      0 0 6px rgba(68, 204, 68, 0.2),
-      inset 0 0 8px rgba(68, 204, 68, 0.05);
+    box-shadow: 0 0 3px rgba(34, 204, 68, 0.1);
   }
   to {
-    box-shadow:
-      0 0 18px rgba(68, 204, 68, 0.5),
-      inset 0 0 16px rgba(68, 204, 68, 0.15);
+    box-shadow: 0 0 10px rgba(34, 204, 68, 0.3);
+  }
+}
+
+@keyframes lab-glow-yellow {
+  from {
+    box-shadow: 0 0 3px rgba(255, 204, 0, 0.1);
+  }
+  to {
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.3);
+  }
+}
+
+@keyframes lab-glow-red {
+  from {
+    box-shadow: 0 0 3px rgba(255, 51, 51, 0.1);
+  }
+  to {
+    box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
   }
 }
 
@@ -1791,17 +1811,13 @@ button,
 }
 
 .lab-arrow {
-  font-size: 28px;
+  font-size: 48px;
   line-height: 1;
   color: #888;
   z-index: 1;
   position: relative;
   transition: color 0.15s;
-}
-
-.lab-powered .lab-arrow {
-  color: #fff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  pointer-events: none;
 }
 
 .lab-flow {
@@ -1928,70 +1944,4 @@ button,
     top: -25%;
     opacity: 0;
   }
-}
-
-#lab-buttons {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  margin-top: 18px;
-  flex-shrink: 0;
-}
-
-.lab-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 3px solid #555;
-  background: #1a1a1a;
-  color: #ccc;
-  font-family: 'Cutive Mono', monospace;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  outline: none;
-  transition:
-    transform 0.1s,
-    filter 0.1s;
-}
-
-.lab-btn:active {
-  transform: scale(0.88);
-  filter: brightness(1.4);
-}
-
-.lab-btn-red {
-  border-color: #a33;
-  color: #ff6666;
-}
-
-.lab-btn-red:hover {
-  background: #2a0808;
-}
-
-.lab-btn-blue {
-  border-color: #33a;
-  color: #66aaff;
-}
-
-.lab-btn-blue:hover {
-  background: #08082a;
-}
-
-.lab-btn-yellow {
-  border-color: #aa3;
-  color: #ffdd44;
-}
-
-.lab-btn-yellow:hover {
-  background: #2a2a08;
-}
-
-.lab-btn-green {
-  border-color: #3a3;
-  color: #66ee66;
-}
-
-.lab-btn-green:hover {
-  background: #082a08;
 }

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { labPuzzle } from '../../src/puzzles/labPuzzle';
 import type { PuzzleContext } from '../../src/types';
 
-const ARROW_ORDER = ['↑', '→', '↓', '←'];
+const PLAY_ORDER = ['▲', '▶', '▼', '◀'];
 
 function createMockContext(): PuzzleContext {
   return {
@@ -22,7 +22,7 @@ describe('labPuzzle', () => {
     vi.restoreAllMocks();
   });
 
-  it('creates 9 cells and 4 color buttons', () => {
+  it('creates 9 clickable cells', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
@@ -33,16 +33,10 @@ describe('labPuzzle', () => {
     for (let i = 0; i < 9; i++) {
       const arrow = cells[i].querySelector('.lab-arrow');
       expect(arrow).not.toBeNull();
-      expect(ARROW_ORDER).toContain(arrow!.textContent);
+      expect(PLAY_ORDER).toContain(arrow!.textContent);
     }
 
-    const btns = container.querySelectorAll('.lab-btn');
-    expect(btns.length).toBe(4);
-
-    const btnColors = ['red', 'blue', 'yellow', 'green'];
-    for (const color of btnColors) {
-      expect(container.querySelector(`.lab-btn-${color}`)).not.toBeNull();
-    }
+    expect(container.querySelectorAll('.lab-btn').length).toBe(0);
 
     instance.destroy();
   });
@@ -74,14 +68,14 @@ describe('labPuzzle', () => {
     instance.destroy();
   });
 
-  it('pressing a color button increments moves', () => {
+  it('clicking a cell increments moves', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
 
     vi.mocked(ctx.setStatus).mockClear();
 
-    container.querySelector<HTMLElement>('.lab-btn-red')!.click();
+    container.querySelector<HTMLElement>('.lab-cell')!.click();
     expect(ctx.setStatus).toHaveBeenCalledWith(
       expect.objectContaining({ moves: 1 }),
     );
@@ -89,16 +83,17 @@ describe('labPuzzle', () => {
     instance.destroy();
   });
 
-  it('clicking different color buttons increments moves each time', () => {
+  it('clicking cells increments moves each time', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
 
     vi.mocked(ctx.setStatus).mockClear();
 
-    container.querySelector<HTMLElement>('.lab-btn-blue')!.click();
-    container.querySelector<HTMLElement>('.lab-btn-yellow')!.click();
-    container.querySelector<HTMLElement>('.lab-btn-green')!.click();
+    const cells = container.querySelectorAll<HTMLElement>('.lab-cell');
+    cells[0].click();
+    cells[1].click();
+    cells[2].click();
 
     expect(ctx.setStatus).toHaveBeenLastCalledWith(
       expect.objectContaining({ moves: 3 }),
@@ -107,7 +102,7 @@ describe('labPuzzle', () => {
     instance.destroy();
   });
 
-  it('pressing a color button rotates red arrows 90° clockwise', () => {
+  it('clicking a cell rotates all same-colour cells anti-clockwise', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
@@ -117,24 +112,35 @@ describe('labPuzzle', () => {
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    const redIndices: number[] = [];
+    const firstTarget = Array.from(cells).find(
+      (c) =>
+        c.classList.contains('lab-blue') ||
+        c.classList.contains('lab-green') ||
+        c.classList.contains('lab-yellow') ||
+        c.classList.contains('lab-red'),
+    )!;
+    const targetColor = Array.from(firstTarget.classList).find(
+      (c) => c.startsWith('lab-') && c !== 'lab-cell' && c !== 'lab-powered' && c !== 'lab-start' && c !== 'lab-goal' && c !== 'lab-flash',
+    )!;
+
+    const targetIndices: number[] = [];
     const otherIndices: number[] = [];
     cells.forEach((c, i) => {
-      if (c.classList.contains('lab-red')) redIndices.push(i);
+      if (c.classList.contains(targetColor)) targetIndices.push(i);
       else otherIndices.push(i);
     });
 
-    expect(redIndices.length).toBeGreaterThan(0);
+    expect(targetIndices.length).toBeGreaterThan(0);
 
-    container.querySelector<HTMLElement>('.lab-btn-red')!.click();
+    firstTarget.click();
 
     const arrowsAfter = Array.from(cells).map(
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    for (const i of redIndices) {
-      const expectedIdx = (ARROW_ORDER.indexOf(arrowsBefore[i]) + 1) % 4;
-      expect(arrowsAfter[i]).toBe(ARROW_ORDER[expectedIdx]);
+    for (const i of targetIndices) {
+      const expectedIdx = (PLAY_ORDER.indexOf(arrowsBefore[i]) - 1 + 4) % 4;
+      expect(arrowsAfter[i]).toBe(PLAY_ORDER[expectedIdx]);
     }
 
     for (const i of otherIndices) {
@@ -144,7 +150,7 @@ describe('labPuzzle', () => {
     instance.destroy();
   });
 
-  it('pressing a color button twice rotates arrows 180°', () => {
+  it('clicking a cell twice rotates same-colour cells 180 degrees', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
@@ -154,28 +160,38 @@ describe('labPuzzle', () => {
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    const redIndices: number[] = [];
+    const firstTarget = Array.from(cells).find(
+      (c) =>
+        c.classList.contains('lab-blue') ||
+        c.classList.contains('lab-green') ||
+        c.classList.contains('lab-yellow') ||
+        c.classList.contains('lab-red'),
+    )!;
+    const targetColor = Array.from(firstTarget.classList).find(
+      (c) => c.startsWith('lab-') && c !== 'lab-cell' && c !== 'lab-powered' && c !== 'lab-start' && c !== 'lab-goal' && c !== 'lab-flash',
+    )!;
+
+    const targetIndices: number[] = [];
     cells.forEach((c, i) => {
-      if (c.classList.contains('lab-red')) redIndices.push(i);
+      if (c.classList.contains(targetColor)) targetIndices.push(i);
     });
 
-    const btn = container.querySelector<HTMLElement>('.lab-btn-red')!;
-    btn.click();
-    btn.click();
+    firstTarget.click();
+    firstTarget.click();
 
     const arrowsAfter = Array.from(cells).map(
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    for (const i of redIndices) {
-      const expectedIdx = (ARROW_ORDER.indexOf(arrowsBefore[i]) + 2) % 4;
-      expect(arrowsAfter[i]).toBe(ARROW_ORDER[expectedIdx]);
+    for (const i of targetIndices) {
+      const expectedIdx = (PLAY_ORDER.indexOf(arrowsBefore[i]) - 2 + 8) % 4;
+      expect(arrowsAfter[i]).toBe(PLAY_ORDER[expectedIdx]);
     }
 
     instance.destroy();
   });
 
-  it('pressing a color button four times returns to original state', () => {
+  it('clicking a cell four times returns to original state', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
@@ -185,11 +201,11 @@ describe('labPuzzle', () => {
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    const btn = container.querySelector<HTMLElement>('.lab-btn-blue')!;
-    btn.click();
-    btn.click();
-    btn.click();
-    btn.click();
+    const first = cells[0];
+    first.click();
+    first.click();
+    first.click();
+    first.click();
 
     const arrowsAfter = Array.from(cells).map(
       (c) => c.querySelector('.lab-arrow')!.textContent!,
@@ -202,7 +218,7 @@ describe('labPuzzle', () => {
     instance.destroy();
   });
 
-  it('different color buttons rotate disjoint sets of cells', () => {
+  it('clicking cells of different colours rotates disjoint sets', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
@@ -212,47 +228,39 @@ describe('labPuzzle', () => {
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    const redIndices: number[] = [];
-    const blueIndices: number[] = [];
-    cells.forEach((c, i) => {
-      const cls = c.className;
-      if (cls.includes('lab-red')) redIndices.push(i);
-      if (cls.includes('lab-blue')) blueIndices.push(i);
-    });
+    const COL_CLASSES = ['lab-blue', 'lab-green', 'lab-yellow', 'lab-red'];
+    function getIndices(cls: string): number[] {
+      const idx: number[] = [];
+      cells.forEach((c, i) => { if (c.classList.contains(cls)) idx.push(i); });
+      return idx;
+    }
+    const colorSets = COL_CLASSES.map(getIndices).filter((a) => a.length > 0);
+    expect(colorSets.length).toBeGreaterThanOrEqual(2);
 
-    const redBtn = container.querySelector<HTMLElement>('.lab-btn-red')!;
-    const blueBtn = container.querySelector<HTMLElement>('.lab-btn-blue')!;
-    redBtn.click();
-    blueBtn.click();
+    const [colorA, colorB] = colorSets;
+
+    cells[colorA[0]].click();
+    cells[colorB[0]].click();
 
     const arrowsAfter = Array.from(cells).map(
       (c) => c.querySelector('.lab-arrow')!.textContent!,
     );
 
-    const bothRedAndBlue = redIndices.filter((i) => blueIndices.includes(i));
-    const anyOther = Array.from(cells)
+    const neither = Array.from(cells)
       .map((_, i) => i)
-      .filter(
-        (i) => !redIndices.includes(i) && !blueIndices.includes(i),
-      );
+      .filter((i) => !colorA.includes(i) && !colorB.includes(i));
 
-    for (const i of redIndices) {
-      const expectedIdx = (ARROW_ORDER.indexOf(arrowsBefore[i]) + 1) % 4;
-      expect(arrowsAfter[i]).toBe(ARROW_ORDER[expectedIdx]);
+    for (const i of colorA) {
+      const expectedIdx = (PLAY_ORDER.indexOf(arrowsBefore[i]) - 1 + 4) % 4;
+      expect(arrowsAfter[i]).toBe(PLAY_ORDER[expectedIdx]);
     }
 
-    for (const i of blueIndices) {
-      if (bothRedAndBlue.includes(i)) continue;
-      const expectedIdx = (ARROW_ORDER.indexOf(arrowsBefore[i]) + 1) % 4;
-      expect(arrowsAfter[i]).toBe(ARROW_ORDER[expectedIdx]);
+    for (const i of colorB) {
+      const expectedIdx = (PLAY_ORDER.indexOf(arrowsBefore[i]) - 1 + 4) % 4;
+      expect(arrowsAfter[i]).toBe(PLAY_ORDER[expectedIdx]);
     }
 
-    for (const i of bothRedAndBlue) {
-      const expectedIdx = (ARROW_ORDER.indexOf(arrowsBefore[i]) + 2) % 4;
-      expect(arrowsAfter[i]).toBe(ARROW_ORDER[expectedIdx]);
-    }
-
-    for (const i of anyOther) {
+    for (const i of neither) {
       expect(arrowsAfter[i]).toBe(arrowsBefore[i]);
     }
 
@@ -276,42 +284,52 @@ describe('labPuzzle', () => {
 
       const cells = container.querySelectorAll('.lab-cell');
       const arrow0 = cells[0].querySelector('.lab-arrow')!.textContent;
-      expect(arrow0).not.toBe('↓');
+      expect(arrow0).not.toBe('▼');
 
       instance.destroy();
     }
   });
 
-  it('plays a tone when a color button is pressed', () => {
+  it('plays a tone when a cell is clicked', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
 
-    container.querySelector<HTMLElement>('.lab-btn-green')!.click();
+    container.querySelector<HTMLElement>('.lab-cell')!.click();
 
     expect(ctx.playTone).toHaveBeenCalledOnce();
 
     instance.destroy();
   });
 
-  it('applies flash class on color press', () => {
+  it('applies flash class on cell click', () => {
     const container = document.createElement('div');
     const ctx = createMockContext();
     const instance = labPuzzle.create(container, ctx);
 
     const cells = container.querySelectorAll('.lab-cell');
-    const redIndices: number[] = [];
+    const firstTarget = Array.from(cells).find(
+      (c) =>
+        c.classList.contains('lab-blue') ||
+        c.classList.contains('lab-green') ||
+        c.classList.contains('lab-yellow') ||
+        c.classList.contains('lab-red'),
+    )!;
+    const targetColor = Array.from(firstTarget.classList).find(
+      (c) => c.startsWith('lab-') && c !== 'lab-cell' && c !== 'lab-powered' && c !== 'lab-start' && c !== 'lab-goal' && c !== 'lab-flash',
+    )!;
+
+    const targetIndices: number[] = [];
     cells.forEach((c, i) => {
-      if (c.classList.contains('lab-red')) redIndices.push(i);
+      if (c.classList.contains(targetColor)) targetIndices.push(i);
     });
 
-    container.querySelector<HTMLElement>('.lab-btn-red')!.click();
+    firstTarget.click();
 
-    for (const i of redIndices) {
+    for (const i of targetIndices) {
       expect(cells[i].classList.contains('lab-flash')).toBe(true);
     }
 
-    // Clean up pending timeouts
     instance.destroy();
   });
 });

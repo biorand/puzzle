@@ -2,21 +2,21 @@ import type { PuzzleContext, PuzzleModule } from '../types';
 import { completePuzzle, makeActions, sleep } from './shared';
 
 type Direction = 'up' | 'right' | 'down' | 'left';
-type Color = 'red' | 'blue' | 'yellow' | 'green';
+type Color = 'blue' | 'green' | 'yellow' | 'red';
 
 interface Cell {
   direction: Direction;
   colorIndex: number;
 }
 
-const COLORS: Color[] = ['red', 'blue', 'yellow', 'green'];
+const COLORS: Color[] = ['blue', 'green', 'yellow', 'red'];
 const DIR_ORDER: Direction[] = ['up', 'right', 'down', 'left'];
 const DIR_INDEX: Record<Direction, number> = { up: 0, right: 1, down: 2, left: 3 };
 const ARROW_CHARS: Record<Direction, string> = {
-  up: '\u2191',
-  right: '\u2192',
-  down: '\u2193',
-  left: '\u2190',
+  up: '\u25B2',
+  right: '\u25B6',
+  down: '\u25BC',
+  left: '\u25C0',
 };
 
 const DR: Record<Direction, [number, number]> = {
@@ -27,7 +27,7 @@ const DR: Record<Direction, [number, number]> = {
 };
 
 function rotate(dir: Direction, times: number): Direction {
-  return DIR_ORDER[(DIR_INDEX[dir] + times) % 4];
+  return DIR_ORDER[(DIR_INDEX[dir] - times + 4) % 4];
 }
 
 function tracePower(grid: Cell[], presses: number[]): Set<number> {
@@ -46,21 +46,22 @@ function tracePower(grid: Cell[], presses: number[]): Set<number> {
   return visited;
 }
 
-function isSolved(powered: Set<number>): boolean {
-  return powered.has(8);
+function isSolved(powered: Set<number>, grid: Cell[], presses: number[]): boolean {
+  if (!powered.has(8)) return false;
+  return rotate(grid[8].direction, presses[grid[8].colorIndex]) === 'down';
 }
 
 function solve(grid: Cell[]): number[] | null {
   let best: number[] | null = null;
   let bestTotal = Infinity;
-  for (let r = 0; r < 4; r++) {
-    for (let b = 0; b < 4; b++) {
+  for (let b = 0; b < 4; b++) {
+    for (let g = 0; g < 4; g++) {
       for (let y = 0; y < 4; y++) {
-        for (let g = 0; g < 4; g++) {
-          const presses = [r, b, y, g];
-          const total = r + b + y + g;
+        for (let r = 0; r < 4; r++) {
+          const presses = [b, g, y, r];
+          const total = b + g + y + r;
           if (total >= bestTotal) continue;
-          if (isSolved(tracePower(grid, presses))) {
+          if (isSolved(tracePower(grid, presses), grid, presses)) {
             bestTotal = total;
             best = presses;
           }
@@ -85,17 +86,16 @@ let cellEls: HTMLElement[] = [];
 let arrowEls: HTMLElement[] = [];
 let flowEls: HTMLElement[] = [];
 let flowArrowEls: HTMLElement[][] = [];
-let btnEls: HTMLElement[] = [];
 
 function buildDOM(container: HTMLElement): void {
   wrap = document.createElement('div');
   wrap.id = 'lab-wrap';
   container.appendChild(wrap);
 
-  const headerNote = document.createElement('div');
-  headerNote.id = 'lab-note';
-  headerNote.textContent = 'START \u2192 GOAL';
-  wrap.appendChild(headerNote);
+  const note = document.createElement('div');
+  note.id = 'lab-note';
+  note.textContent = 'START \u2192 GOAL';
+  wrap.appendChild(note);
 
   const gridEl = document.createElement('div');
   gridEl.id = 'lab-grid';
@@ -111,6 +111,7 @@ function buildDOM(container: HTMLElement): void {
     const cell = document.createElement('div');
     cell.className = 'lab-cell';
     cell.dataset.index = String(i);
+    cell.addEventListener('click', () => pressColor(grid[i].colorIndex));
     gridEl.appendChild(cell);
     cellEls.push(cell);
 
@@ -132,22 +133,6 @@ function buildDOM(container: HTMLElement): void {
       fas.push(fa);
     }
     flowArrowEls.push(fas);
-  }
-
-  const btnWrap = document.createElement('div');
-  btnWrap.id = 'lab-buttons';
-  wrap.appendChild(btnWrap);
-
-  const COLOR_LABELS = ['R', 'B', 'Y', 'G'];
-  for (let i = 0; i < 4; i++) {
-    const btn = document.createElement('button');
-    btn.className = `lab-btn lab-btn-${COLORS[i]}`;
-    btn.dataset.colorIndex = String(i);
-    btn.setAttribute('aria-label', `${COLORS[i]} button`);
-    btn.textContent = COLOR_LABELS[i];
-    btn.addEventListener('click', () => pressColor(i));
-    btnWrap.appendChild(btn);
-    btnEls.push(btn);
   }
 }
 
@@ -264,12 +249,15 @@ function pressColor(colorIdx: number): void {
   flashColorCells(colorIdx);
 
   const powered = tracePower(grid, colorPresses);
-  if (isSolved(powered)) {
+  if (isSolved(powered, grid, colorPresses)) {
     setTimeout(() => completeAnimation(), 300);
   }
 }
 
 async function completeAnimation(): Promise<void> {
+  const powered = tracePower(grid, colorPresses);
+  const poweredEls = cellEls.filter((_, i) => powered.has(i));
+
   await completePuzzle(
     ctx,
     playingRef,
@@ -277,12 +265,12 @@ async function completeAnimation(): Promise<void> {
       const melody = ctx!.playMelody('E4G4A4C5E5D5C5G4');
 
       for (let f = 0; f < 4; f++) {
-        for (const el of cellEls) {
+        for (const el of poweredEls) {
           el.style.filter = f % 2 === 0 ? 'brightness(1.5)' : 'brightness(1)';
         }
         await sleep(150);
       }
-      for (const el of cellEls) el.style.filter = '';
+      for (const el of poweredEls) el.style.filter = '';
 
       await melody;
     },
@@ -293,23 +281,23 @@ async function completeAnimation(): Promise<void> {
 }
 
 const LAB_THUMB = `<svg viewBox="0 0 120 120" fill="none">
-  <rect x="6" y="6" width="34" height="34" rx="4" fill="#3a1111" stroke="#ff4444" stroke-width="2"/>
-  <text x="23" y="29" text-anchor="middle" fill="#ff6666" font-size="18" font-weight="bold">\u2192</text>
-  <rect x="43" y="6" width="34" height="34" rx="4" fill="#111a3a" stroke="#4488ff" stroke-width="2"/>
-  <text x="60" y="29" text-anchor="middle" fill="#66aaff" font-size="18" font-weight="bold">\u2193</text>
-  <rect x="80" y="6" width="34" height="34" rx="4" fill="#3a3a11" stroke="#ffcc00" stroke-width="2"/>
-  <text x="97" y="29" text-anchor="middle" fill="#ffdd44" font-size="18" font-weight="bold">\u2190</text>
-  <rect x="6" y="43" width="34" height="34" rx="4" fill="#113a11" stroke="#44cc44" stroke-width="2"/>
-  <text x="23" y="66" text-anchor="middle" fill="#66ee66" font-size="18" font-weight="bold">\u2191</text>
-  <rect x="43" y="43" width="34" height="34" rx="4" fill="#3a1111" stroke="#ff4444" stroke-width="2"/>
-  <text x="60" y="66" text-anchor="middle" fill="#ff6666" font-size="18" font-weight="bold">\u2192</text>
-  <rect x="80" y="43" width="34" height="34" rx="4" fill="#111a3a" stroke="#4488ff" stroke-width="2"/>
-  <text x="97" y="66" text-anchor="middle" fill="#66aaff" font-size="18" font-weight="bold">\u2193</text>
-  <rect x="6" y="80" width="34" height="34" rx="4" fill="#3a3a11" stroke="#ffcc00" stroke-width="2"/>
-  <text x="23" y="103" text-anchor="middle" fill="#ffdd44" font-size="18" font-weight="bold">\u2190</text>
-  <rect x="43" y="80" width="34" height="34" rx="4" fill="#113a11" stroke="#44cc44" stroke-width="2"/>
-  <text x="60" y="103" text-anchor="middle" fill="#66ee66" font-size="18" font-weight="bold">\u2191</text>
-  <rect x="80" y="80" width="34" height="34" rx="4" fill="#3a1111" stroke="#ff8800" stroke-width="2"/>
+  <rect x="6" y="6" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#2288ff" stroke-width="2"/>
+  <text x="23" y="29" text-anchor="middle" fill="#66bbff" font-size="18" font-weight="bold">\u25B6</text>
+  <rect x="43" y="6" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#22cc44" stroke-width="2"/>
+  <text x="60" y="29" text-anchor="middle" fill="#44ee66" font-size="18" font-weight="bold">\u25BC</text>
+  <rect x="80" y="6" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#ffcc00" stroke-width="2"/>
+  <text x="97" y="29" text-anchor="middle" fill="#ffdd44" font-size="18" font-weight="bold">\u25C0</text>
+  <rect x="6" y="43" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#ff3333" stroke-width="2"/>
+  <text x="23" y="66" text-anchor="middle" fill="#ff6666" font-size="18" font-weight="bold">\u25B2</text>
+  <rect x="43" y="43" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#2288ff" stroke-width="2"/>
+  <text x="60" y="66" text-anchor="middle" fill="#66bbff" font-size="18" font-weight="bold">\u25B6</text>
+  <rect x="80" y="43" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#22cc44" stroke-width="2"/>
+  <text x="97" y="66" text-anchor="middle" fill="#44ee66" font-size="18" font-weight="bold">\u25BC</text>
+  <rect x="6" y="80" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#ffcc00" stroke-width="2"/>
+  <text x="23" y="103" text-anchor="middle" fill="#ffdd44" font-size="18" font-weight="bold">\u25C0</text>
+  <rect x="43" y="80" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#ff3333" stroke-width="2"/>
+  <text x="60" y="103" text-anchor="middle" fill="#ff6666" font-size="18" font-weight="bold">\u25B2</text>
+  <rect x="80" y="80" width="34" height="34" rx="4" fill="#1a1a1a" stroke="#ff8800" stroke-width="2"/>
   <text x="97" y="103" text-anchor="middle" fill="#ff8800" font-size="18" font-weight="bold">\u25C9</text>
 </svg>`;
 
@@ -341,7 +329,6 @@ export const labPuzzle: PuzzleModule = {
         arrowEls = [];
         flowEls = [];
         flowArrowEls = [];
-        btnEls = [];
         flashTimeouts = [];
         playingRef.value = false;
       },
