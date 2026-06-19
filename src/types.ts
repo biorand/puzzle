@@ -29,6 +29,13 @@ export interface PuzzleContext {
   onCheatUnlockAll?: (playMelodyFn?: () => Promise<void>) => void;
 }
 
+export interface MenuEntry {
+  id: string;
+  name: string;
+  unlocked: boolean;
+  requirementLabel?: string;
+}
+
 export interface PuzzleModule {
   id: string;
   slug: string;

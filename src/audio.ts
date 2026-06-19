@@ -2,6 +2,7 @@ let audioCtx: AudioContext | null = null;
 
 function initAudio(): AudioContext {
   if (!audioCtx)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
@@ -27,8 +28,13 @@ export function playTone(progress: number): void {
 }
 
 const NOTE_FREQ: Record<string, number> = {
-  C: 261.63, D: 293.66, E: 329.63, F: 349.23,
-  G: 392.00, A: 440.00, B: 493.88,
+  C: 261.63,
+  D: 293.66,
+  E: 329.63,
+  F: 349.23,
+  G: 392.0,
+  A: 440.0,
+  B: 493.88,
 };
 
 export function playMelody(notes: string): Promise<void> {
@@ -41,7 +47,7 @@ export function playMelody(notes: string): Promise<void> {
   const lines = notes.split('\n');
 
   // Detect extended syntax (contains spaces or slashes) from any line
-  const isExtended = (s: string) => /[\s\/]/.test(s);
+  const isExtended = (s: string) => /[\s/]/.test(s);
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -163,10 +169,16 @@ export function playMelody(notes: string): Promise<void> {
   }
 
   const ms = Math.max(0, (maxEnd - ctx.currentTime) * 1000 + 50);
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-function playFreq(ctx: AudioContext, freq: number, startTime: number, duration: number, volume: number = 0.2): void {
+function playFreq(
+  ctx: AudioContext,
+  freq: number,
+  startTime: number,
+  duration: number,
+  volume: number = 0.2,
+): void {
   // Bell-like chime: triangle fundamental + quiet harmonic overtone
   const minSustain = 0.35;
   const sustainTime = Math.max(duration * 1.8, minSustain);

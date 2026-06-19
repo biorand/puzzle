@@ -47,6 +47,36 @@ body {
   text-align: center;
 }
 
+/* ── root Lit host fills flex column ── */
+
+repuzzles-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+puzzle-host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+puzzle-menu {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+melody-composer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* ── header bar ── */
 
 #app-header {
@@ -56,10 +86,7 @@ body {
   align-items: center;
   background: #1a1a1a;
   border-bottom: 1px solid #333;
-  padding:
-    calc(8px + env(safe-area-inset-top, 0px))
-    calc(8px + env(safe-area-inset-right, 0px))
-    8px
+  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) 8px
     calc(8px + env(safe-area-inset-left, 0px));
   min-height: 56px;
 }
@@ -173,7 +200,12 @@ body {
   font-size: 28px;
   cursor: pointer;
   outline: none;
-  transition: background 0.12s, box-shadow 0.12s, border-color 0.12s, color 0.12s, transform 0.08s;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    transform 0.08s;
 }
 
 .cell:hover {
@@ -188,7 +220,9 @@ body {
 .cell.orange {
   background: #ff6600;
   border-color: #ff8800;
-  box-shadow: 0 0 18px rgba(255, 102, 0, 0.5), inset 0 0 8px rgba(255, 136, 0, 0.2);
+  box-shadow:
+    0 0 18px rgba(255, 102, 0, 0.5),
+    inset 0 0 8px rgba(255, 136, 0, 0.2);
   color: #fff;
 }
 
@@ -199,10 +233,7 @@ body {
   display: flex;
   background: #1a1a1a;
   border-top: 1px solid #333;
-  padding:
-    6px
-    calc(6px + env(safe-area-inset-right, 0px))
-    6px
+  padding: 6px calc(6px + env(safe-area-inset-right, 0px)) 6px
     calc(6px + env(safe-area-inset-left, 0px));
 }
 
@@ -240,7 +271,11 @@ body {
 
 .action-btn .btn-icon {
   font-size: 24px;
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 300,
+    'GRAD' 0,
+    'opsz' 24;
   border-radius: 50%;
   width: 44px;
   height: 44px;
@@ -287,7 +322,9 @@ body {
   font-size: 52px;
   color: #ff6600;
   letter-spacing: 10px;
-  text-shadow: 0 0 40px rgba(255, 102, 0, 0.7), 0 0 80px rgba(255, 102, 0, 0.3);
+  text-shadow:
+    0 0 40px rgba(255, 102, 0, 0.7),
+    0 0 80px rgba(255, 102, 0, 0.3);
   animation: pulse 0.6s ease-in-out infinite alternate;
 }
 
@@ -314,13 +351,25 @@ body {
 }
 
 @keyframes pulse {
-  from { opacity: 0.7; transform: scale(1); }
-  to   { opacity: 1;   transform: scale(1.05); }
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── menu ── */
@@ -369,7 +418,10 @@ body {
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 3px;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 
 .menu-card:hover {
@@ -456,7 +508,10 @@ body {
   border-radius: 50%;
   border: 2px solid #335;
   background: #1a1a2a;
-  transition: background 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s,
+    border-color 0.12s;
 }
 
 .safe-light.chain {
@@ -512,7 +567,11 @@ body {
   font-size: 20px;
   cursor: pointer;
   outline: none;
-  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s;
 }
 
 .safe-btn:hover {
@@ -560,14 +619,19 @@ body {
   aspect-ratio: 1;
   border: 2px solid #444;
   background: #1a1a1a;
-  transition: background 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s,
+    border-color 0.12s;
   cursor: pointer;
 }
 
 .stagla-light.on {
   background: #ff6600;
   border-color: #ff8800;
-  box-shadow: 0 0 18px rgba(255, 102, 0, 0.5), inset 0 0 8px rgba(255, 136, 0, 0.2);
+  box-shadow:
+    0 0 18px rgba(255, 102, 0, 0.5),
+    inset 0 0 8px rgba(255, 136, 0, 0.2);
 }
 
 .stagla-labels-row {
@@ -582,7 +646,9 @@ body {
   font-size: 24px;
   font-weight: bold;
   color: #666;
-  transition: color 0.12s, text-shadow 0.12s;
+  transition:
+    color 0.12s,
+    text-shadow 0.12s;
 }
 
 .stagla-label.target {
@@ -613,7 +679,10 @@ body {
   border-radius: 50%;
   border: 2px solid #555;
   background: #1a1a1a;
-  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
 }
 
 .stagla-circle.on {
@@ -621,8 +690,6 @@ body {
   border-color: #ff8800;
   box-shadow: 0 0 8px rgba(255, 102, 0, 0.5);
 }
-
-
 
 /* ── graveyard ── */
 
@@ -665,7 +732,11 @@ body {
   border-radius: 50%;
   background: #1a1a1a;
   transform: rotate(0deg);
-  transition: color 0.15s, background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
   z-index: 2;
 }
 
@@ -744,7 +815,11 @@ body {
   background: #1a1a1a;
   color: #555;
   font-size: 18px;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .graveyard-goal-symbol[hidden] {
@@ -777,7 +852,12 @@ body {
   font-size: 26px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s, transform 0.08s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s,
+    transform 0.08s;
   outline: none;
 }
 
@@ -821,7 +901,9 @@ body {
     linear-gradient(to right, #333 2px, transparent 2px),
     linear-gradient(to bottom, #333 2px, transparent 2px);
   background-size: calc(100% / 3) calc(100% / 3);
-  background-position: 0 0, 0 0;
+  background-position:
+    0 0,
+    0 0;
   pointer-events: none;
   z-index: 0;
 }
@@ -959,7 +1041,10 @@ button,
   background: #1a1a1a;
   color: #ccc;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 
 #melody-play:hover,
@@ -1002,7 +1087,10 @@ button,
   background: #1a1a1a;
   color: #999;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 
 .melody-preset-btn:hover {
@@ -1090,8 +1178,14 @@ button,
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (min-width: 500px) {

@@ -44,7 +44,8 @@ function generateTargets(): void {
     } while (state.every((v, j) => v === (j === stageTargets[i])));
     stageInitialStates[i] = state;
   }
-  optimal = OPTIMAL_MAP[stageTargets[0]] + OPTIMAL_MAP[stageTargets[1]] + OPTIMAL_MAP[stageTargets[2]];
+  optimal =
+    OPTIMAL_MAP[stageTargets[0]] + OPTIMAL_MAP[stageTargets[1]] + OPTIMAL_MAP[stageTargets[2]];
 }
 
 function resetState(): void {
@@ -117,10 +118,10 @@ async function completeStage(): Promise<void> {
     ctx.playTone(0.5);
     lightEls[target].classList.add('flash');
     labelEls[target].classList.add('flash');
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200));
     lightEls[target].classList.remove('flash');
     labelEls[target].classList.remove('flash');
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   completedStages[stage] = true;
@@ -135,13 +136,13 @@ async function completeStage(): Promise<void> {
         labelEls[i].classList.add('flash');
         lightEls[i].classList.add('on');
       }
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
       for (let i = 0; i < 4; i++) {
         lightEls[i].classList.remove('flash');
         labelEls[i].classList.remove('flash');
         lightEls[i].classList.remove('on');
       }
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     const nextMod = ctx.score.increment();
@@ -154,8 +155,18 @@ async function completeStage(): Promise<void> {
     generatePuzzle();
 
     ctx.setActions([
-      { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
-      { label: 'Reset', handler: () => { if (!playing) resetPuzzle(); } },
+      {
+        label: 'New Puzzle',
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
+      },
+      {
+        label: 'Reset',
+        handler: () => {
+          if (!playing) resetPuzzle();
+        },
+      },
     ]);
   } else {
     stage++;
@@ -164,8 +175,18 @@ async function completeStage(): Promise<void> {
     render();
 
     ctx.setActions([
-      { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
-      { label: 'Reset', handler: () => { if (!playing) resetPuzzle(); } },
+      {
+        label: 'New Puzzle',
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
+      },
+      {
+        label: 'Reset',
+        handler: () => {
+          if (!playing) resetPuzzle();
+        },
+      },
     ]);
   }
 
@@ -230,8 +251,18 @@ export const stagla: PuzzleModule = {
     generatePuzzle();
 
     ctx.setActions([
-      { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
-      { label: 'Reset', handler: () => { if (!playing) resetPuzzle(); } },
+      {
+        label: 'New Puzzle',
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
+      },
+      {
+        label: 'Reset',
+        handler: () => {
+          if (!playing) resetPuzzle();
+        },
+      },
     ]);
 
     return {

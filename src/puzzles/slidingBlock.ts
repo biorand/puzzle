@@ -41,24 +41,20 @@ function applyShift(board: number[], blank: number, clickPos: number): number[] 
     // Same row — shift horizontally
     if (cCol < bCol) {
       // Clicked left of blank — shift right
-      for (let c = bCol; c > cCol; c--)
-        next[bRow * COLS + c] = next[bRow * COLS + (c - 1)];
+      for (let c = bCol; c > cCol; c--) next[bRow * COLS + c] = next[bRow * COLS + (c - 1)];
     } else {
       // Clicked right of blank — shift left
-      for (let c = bCol; c < cCol; c++)
-        next[bRow * COLS + c] = next[bRow * COLS + (c + 1)];
+      for (let c = bCol; c < cCol; c++) next[bRow * COLS + c] = next[bRow * COLS + (c + 1)];
     }
     next[clickPos] = 0;
   } else if (bCol === cCol) {
     // Same column — shift vertically
     if (cRow < bRow) {
       // Clicked above blank — shift down
-      for (let r = bRow; r > cRow; r--)
-        next[r * COLS + bCol] = next[(r - 1) * COLS + bCol];
+      for (let r = bRow; r > cRow; r--) next[r * COLS + bCol] = next[(r - 1) * COLS + bCol];
     } else {
       // Clicked below blank — shift up
-      for (let r = bRow; r < cRow; r++)
-        next[r * COLS + bCol] = next[(r + 1) * COLS + bCol];
+      for (let r = bRow; r < cRow; r++) next[r * COLS + bCol] = next[(r + 1) * COLS + bCol];
     }
     next[clickPos] = 0;
   }
@@ -116,20 +112,20 @@ function getOptimal(startBoard: number[]): number {
 // ── Puzzle generation ──
 
 function shufflePuzzle(): { board: number[]; optimal: number } {
-    for (; ;) {
-        const board = [...GOAL];
-        let blank = SIZE - 1;
-        const steps = 500;
-        for (let s = 0; s < steps; s++) {
-            // Pick a random tile in the same row or column as blank and shift
-            const moves = [...possibleMoves(board, blank)];
-            const nextBoard = moves[Math.floor(Math.random() * moves.length)];
-            for (let i = 0; i < SIZE; i++) board[i] = nextBoard[i];
-            blank = indexOf(board, 0);
-        }
-        const optimal = getOptimal(board);
-        if (optimal > 0) return { board, optimal };
+  for (;;) {
+    const board = [...GOAL];
+    let blank = SIZE - 1;
+    const steps = 500;
+    for (let s = 0; s < steps; s++) {
+      // Pick a random tile in the same row or column as blank and shift
+      const moves = [...possibleMoves(board, blank)];
+      const nextBoard = moves[Math.floor(Math.random() * moves.length)];
+      for (let i = 0; i < SIZE; i++) board[i] = nextBoard[i];
+      blank = indexOf(board, 0);
     }
+    const optimal = getOptimal(board);
+    if (optimal > 0) return { board, optimal };
+  }
 }
 
 // ── State ──
@@ -148,171 +144,191 @@ let tileEls: HTMLElement[] = [];
 // ── DOM build ──
 
 function buildDOM(container: HTMLElement): void {
-    wrap = document.createElement('div');
-    wrap.id = 'sliding-wrap';
-    container.appendChild(wrap);
+  wrap = document.createElement('div');
+  wrap.id = 'sliding-wrap';
+  container.appendChild(wrap);
 
-    // Background grid lines
-    const grid = document.createElement('div');
-    grid.id = 'sliding-grid';
-    wrap.appendChild(grid);
+  // Background grid lines
+  const grid = document.createElement('div');
+  grid.id = 'sliding-grid';
+  wrap.appendChild(grid);
 
-    // Tile elements — one per value (1..8), absolutely positioned
-    tileEls = [];
-    for (let v = 1; v < SIZE; v++) {
-        const tile = document.createElement('div');
-        tile.className = 'sliding-tile';
-        tile.dataset.value = String(v);
+  // Tile elements — one per value (1..8), absolutely positioned
+  tileEls = [];
+  for (let v = 1; v < SIZE; v++) {
+    const tile = document.createElement('div');
+    tile.className = 'sliding-tile';
+    tile.dataset.value = String(v);
 
-        // Umbrella fragment as background
-        tile.style.backgroundImage = `url(${SVG_DATA_URI})`;
-        tile.style.backgroundSize = `${COLS * 100}% ${ROWS * 100}%`;
+    // Umbrella fragment as background
+    tile.style.backgroundImage = `url(${SVG_DATA_URI})`;
+    tile.style.backgroundSize = `${COLS * 100}% ${ROWS * 100}%`;
 
-        // Fixed background position: each tile shows the fragment from its goal position
-        const goalCol = (v - 1) % COLS;
-        const goalRow = Math.floor((v - 1) / COLS);
-        tile.style.backgroundPosition = `${(goalCol / (COLS - 1)) * 100}% ${(goalRow / (ROWS - 1)) * 100}%`;
+    // Fixed background position: each tile shows the fragment from its goal position
+    const goalCol = (v - 1) % COLS;
+    const goalRow = Math.floor((v - 1) / COLS);
+    tile.style.backgroundPosition = `${(goalCol / (COLS - 1)) * 100}% ${(goalRow / (ROWS - 1)) * 100}%`;
 
-        tile.addEventListener('click', () => pressTile(v));
-        wrap.appendChild(tile);
-        tileEls.push(tile);
-    }
+    tile.addEventListener('click', () => pressTile(v));
+    wrap.appendChild(tile);
+    tileEls.push(tile);
+  }
 }
 
 // ── Render ──
 
 function render(): void {
-    if (!wrap) return;
-    const wrapW = wrap.clientWidth;
-    const cellSize = wrapW / COLS;
+  if (!wrap) return;
+  const wrapW = wrap.clientWidth;
+  const cellSize = wrapW / COLS;
 
-    for (const tile of tileEls) {
-        tile.style.display = 'none';
-    }
+  for (const tile of tileEls) {
+    tile.style.display = 'none';
+  }
 
-    for (let i = 0; i < SIZE; i++) {
-        const val = board[i];
-        if (val === 0) continue;
-        const col = i % COLS;
-        const row = Math.floor(i / COLS);
-        const tile = tileEls[val - 1];
-        tile.style.display = 'flex';
-        tile.style.width = `${cellSize}px`;
-        tile.style.height = `${cellSize}px`;
-        tile.style.transform = `translate(${col * cellSize}px, ${row * cellSize}px)`;
-    }
+  for (let i = 0; i < SIZE; i++) {
+    const val = board[i];
+    if (val === 0) continue;
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const tile = tileEls[val - 1];
+    tile.style.display = 'flex';
+    tile.style.width = `${cellSize}px`;
+    tile.style.height = `${cellSize}px`;
+    tile.style.transform = `translate(${col * cellSize}px, ${row * cellSize}px)`;
+  }
 
-    if (ctx) ctx.setStatus({ moves, optimal });
+  if (ctx) ctx.setStatus({ moves, optimal });
 }
 
 function generatePuzzle(): void {
-    const result = shufflePuzzle();
-    board = result.board;
-    optimal = result.optimal;
-    blankPos = indexOf(board, 0);
-    moves = 0;
-    playing = false;
-    initialBoard = [...board];
-    render();
+  const result = shufflePuzzle();
+  board = result.board;
+  optimal = result.optimal;
+  blankPos = indexOf(board, 0);
+  moves = 0;
+  playing = false;
+  initialBoard = [...board];
+  render();
 }
 
 function resetPuzzle(): void {
-    board = [...initialBoard];
-    blankPos = indexOf(board, 0);
-    moves = 0;
-    playing = false;
-    render();
+  board = [...initialBoard];
+  blankPos = indexOf(board, 0);
+  moves = 0;
+  playing = false;
+  render();
 }
 
 // ── Interaction ──
 
 function pressTile(value: number): void {
-    if (playing || !ctx) return;
+  if (playing || !ctx) return;
 
-    const pos = indexOf(board, value);
-    if (pos === -1) return;
-    if (!isSameRowOrCol(blankPos, pos)) return;
+  const pos = indexOf(board, value);
+  if (pos === -1) return;
+  if (!isSameRowOrCol(blankPos, pos)) return;
 
-    // Shift all tiles between clicked tile and blank toward blank
-    board = applyShift(board, blankPos, pos);
-    blankPos = pos;
-    moves++;
+  // Shift all tiles between clicked tile and blank toward blank
+  board = applyShift(board, blankPos, pos);
+  blankPos = pos;
+  moves++;
 
-    ctx.playTone(value / SIZE);
-    render();
+  ctx.playTone(value / SIZE);
+  render();
 
-    // Check solved
-    if (board.join(',') === GOAL_STR) {
-        setTimeout(() => completeAnimation(), 200);
-    }
+  // Check solved
+  if (board.join(',') === GOAL_STR) {
+    setTimeout(() => completeAnimation(), 200);
+  }
 }
 
 // ── Completion ──
 
 async function completeAnimation(): Promise<void> {
-    if (!ctx) return;
-    playing = true;
-    ctx.setActions([]);
+  if (!ctx) return;
+  playing = true;
+  ctx.setActions([]);
 
-    // RE4-style item fanfare (runs in parallel with flash)
-    const melody = ctx.playMelody('G4E5C5D5E5C5G4');
+  // RE4-style item fanfare (runs in parallel with flash)
+  const melody = ctx.playMelody('G4E5C5D5E5C5G4');
 
-    // Flash the tiles
-    for (let f = 0; f < 3; f++) {
-        for (const el of tileEls) el.style.filter = f % 2 === 0 ? 'brightness(0.5)' : 'brightness(1)';
-        await new Promise(r => setTimeout(r, 180));
-    }
-    for (const el of tileEls) el.style.filter = '';
+  // Flash the tiles
+  for (let f = 0; f < 3; f++) {
+    for (const el of tileEls) el.style.filter = f % 2 === 0 ? 'brightness(0.5)' : 'brightness(1)';
+    await new Promise((r) => setTimeout(r, 180));
+  }
+  for (const el of tileEls) el.style.filter = '';
 
-    await melody;
+  await melody;
 
-    const nextMod = ctx.score.increment();
-    if (nextMod) {
-        await ctx.showOverlay(nextMod);
-        return;
-    }
+  const nextMod = ctx.score.increment();
+  if (nextMod) {
+    await ctx.showOverlay(nextMod);
+    return;
+  }
 
-    await ctx.showOverlay();
-    generatePuzzle();
+  await ctx.showOverlay();
+  generatePuzzle();
 
-    ctx.setActions([
-        { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
-        { label: 'Reset', handler: () => { if (!playing) resetPuzzle(); } },
-    ]);
-    playing = false;
+  ctx.setActions([
+    {
+      label: 'New Puzzle',
+      handler: () => {
+        if (!playing) generatePuzzle();
+      },
+    },
+    {
+      label: 'Reset',
+      handler: () => {
+        if (!playing) resetPuzzle();
+      },
+    },
+  ]);
+  playing = false;
 }
 
 // ── Module ──
 
 export const slidingBlock: PuzzleModule = {
-    id: 'slidingBlock',
-    slug: 'sliding-block',
-    sourceGame: 're4',
-    name: 'Sliding Block',
+  id: 'slidingBlock',
+  slug: 'sliding-block',
+  sourceGame: 're4',
+  name: 'Sliding Block',
 
-    create(container: HTMLElement, context: PuzzleContext) {
-        ctx = context;
+  create(container: HTMLElement, context: PuzzleContext) {
+    ctx = context;
+    container.innerHTML = '';
+    buildDOM(container);
+    generatePuzzle();
+
+    context.setActions([
+      {
+        label: 'New Puzzle',
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
+      },
+      {
+        label: 'Reset',
+        handler: () => {
+          if (!playing) resetPuzzle();
+        },
+      },
+    ]);
+
+    const onResize = () => render();
+    window.addEventListener('resize', onResize);
+
+    return {
+      destroy() {
+        window.removeEventListener('resize', onResize);
         container.innerHTML = '';
-        buildDOM(container);
-        generatePuzzle();
-
-        context.setActions([
-            { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
-            { label: 'Reset', handler: () => { if (!playing) resetPuzzle(); } },
-        ]);
-
-        const onResize = () => render();
-        window.addEventListener('resize', onResize);
-
-        return {
-            destroy() {
-                window.removeEventListener('resize', onResize);
-                container.innerHTML = '';
-                wrap = null;
-                ctx = null;
-                tileEls = [];
-                playing = false;
-            },
-        };
-    },
+        wrap = null;
+        ctx = null;
+        tileEls = [];
+        playing = false;
+      },
+    };
+  },
 };

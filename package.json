@@ -1,13 +1,27 @@
 {
   "name": "repuzzles",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --minify",
-    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch=forever & sleep 1 && npx http-server . -p 8000 -c-1"
+    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch=forever & sleep 1 && npx http-server . -p 8000 -c-1",
+    "format": "prettier --write \"src/**/*.ts\" \"*.html\" \"*.css\" \"*.md\" \"*.json\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.html\" \"*.css\" \"*.md\" \"*.json\"",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix"
+  },
+  "dependencies": {
+    "lit": "^3.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "esbuild": "^0.25.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-lit": "^1.15.0",
+    "globals": "^15.14.0",
     "http-server": "^14.1.1",
-    "typescript": "^5.7.0"
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0"
   }
 }

@@ -32,16 +32,13 @@ function render(): void {
   const inChain = (i: number): boolean => {
     if (chain === 0) return false;
     const end = startIdx + chain;
-    if (end <= NUM_BTNS)
-      return mapping[i] >= startIdx && mapping[i] < end;
+    if (end <= NUM_BTNS) return mapping[i] >= startIdx && mapping[i] < end;
     return mapping[i] >= startIdx || mapping[i] < end - NUM_BTNS;
   };
-  for (let j = 0; j < NUM_BTNS; j++)
-    ringLights[j].classList.remove('chain');
+  for (let j = 0; j < NUM_BTNS; j++) ringLights[j].classList.remove('chain');
   for (let i = 0; i < NUM_BTNS; i++) {
     const ic = inChain(i);
-    if (ic || i === wrongFlash)
-      ringLights[mapping[i]].classList.add('chain');
+    if (ic || i === wrongFlash) ringLights[mapping[i]].classList.add('chain');
     gridBtns[i].classList.toggle('pressed', ic || i === wrongFlash);
     gridBtns[i].disabled = ic;
   }
@@ -111,14 +108,12 @@ async function completeAnimation(): Promise<void> {
   ctx.playChime();
   ctx.setActions([]);
 
-  for (let i = 0; i < NUM_BTNS; i++)
-    ringLights[i].classList.toggle('chain', i % 2 === 0);
+  for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain', i % 2 === 0);
 
   const melody = ctx.playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
 
   const interval = setInterval(() => {
-    for (let i = 0; i < NUM_BTNS; i++)
-      ringLights[i].classList.toggle('chain');
+    for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain');
   }, 500);
 
   await melody;
@@ -126,7 +121,7 @@ async function completeAnimation(): Promise<void> {
 
   for (let i = 0; i < NUM_BTNS; i++) {
     ringLights[i].classList.remove('chain');
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 100));
   }
 
   const nextMod = ctx.score.increment();
@@ -138,7 +133,12 @@ async function completeAnimation(): Promise<void> {
   await ctx.showOverlay();
   generatePuzzle();
   ctx.setActions([
-    { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
+    {
+      label: 'New Puzzle',
+      handler: () => {
+        if (!playing) generatePuzzle();
+      },
+    },
     { label: 'Reset', handler: resetPuzzle },
   ]);
   playing = false;
@@ -156,12 +156,14 @@ function buildRing(): void {
   wrap.appendChild(inner);
 
   const N = NUM_BTNS;
-  const cx = 50, cy = 50;
-  const rLight = 37.27, rArrow = 34.55;
+  const cx = 50,
+    cy = 50;
+  const rLight = 37.27,
+    rArrow = 34.55;
 
   for (let i = 0; i < N; i++) {
     const lightAngle = (360 / N) * (i + 0.5);
-    const la = lightAngle * Math.PI / 180;
+    const la = (lightAngle * Math.PI) / 180;
     const lx = cx + rLight * Math.cos(la);
     const ly = cy - rLight * Math.sin(la);
 
@@ -173,7 +175,7 @@ function buildRing(): void {
     ringLights.push(light);
 
     const arrowAngle = (360 / N) * (i + 1);
-    const aa = arrowAngle * Math.PI / 180;
+    const aa = (arrowAngle * Math.PI) / 180;
     const ax = cx + rArrow * Math.cos(aa);
     const ay = cy - rArrow * Math.sin(aa);
 
@@ -238,7 +240,12 @@ export const portableSafe: PuzzleModule = {
     generatePuzzle();
 
     ctx.setActions([
-      { label: 'New Puzzle', handler: () => { if (!playing) generatePuzzle(); } },
+      {
+        label: 'New Puzzle',
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
+      },
       { label: 'Reset', handler: resetPuzzle },
     ]);
 

@@ -1,7 +1,7 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
 
-const MASKS = [0x00B, 0x017, 0x026, 0x059, 0x0BA, 0x134, 0x0C8, 0x1D0, 0x1A0];
-const SOLVED = 0x1FF;
+const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
+const SOLVED = 0x1ff;
 
 const dist = new Int8Array(512).fill(-1);
 const groups: number[][] = Array.from({ length: 5 }, () => []);
@@ -39,14 +39,18 @@ let cheatCount = 0;
 let tutorialDiv: HTMLDivElement | null = null;
 
 function render(): void {
-  for (let i = 0; i < 9; i++)
-    cells[i].classList.toggle('orange', !!(state & (1 << i)));
+  for (let i = 0; i < 9; i++) cells[i].classList.toggle('orange', !!(state & (1 << i)));
   if (ctx) ctx.setStatus({ moves, optimal });
 }
 
 function generatePuzzle(): void {
   let d: number;
-  if (ctx && ctx.forceDifficulty !== undefined && ctx.forceDifficulty >= 1 && ctx.forceDifficulty <= maxDist) {
+  if (
+    ctx &&
+    ctx.forceDifficulty !== undefined &&
+    ctx.forceDifficulty >= 1 &&
+    ctx.forceDifficulty <= maxDist
+  ) {
     d = ctx.forceDifficulty;
   } else {
     const maxD = Math.min(4, maxDist);
@@ -81,8 +85,10 @@ function press(idx: number): void {
   const checkBuffer = [...cheatBuffer, idx + 1].slice(-4);
   const isCheatMatch =
     checkBuffer.length === 4 &&
-    checkBuffer[0] === 2 && checkBuffer[1] === 2 &&
-    checkBuffer[2] === 3 && checkBuffer[3] === 6;
+    checkBuffer[0] === 2 &&
+    checkBuffer[1] === 2 &&
+    checkBuffer[2] === 3 &&
+    checkBuffer[3] === 6;
 
   state ^= MASKS[idx];
   moves++;
@@ -110,7 +116,7 @@ function press(idx: number): void {
         D5/3.0[0.3]
         Z/0.8 E5/3.0[0.2.5]
         Z/1.6 F5/5.0[0.2]
-        `
+        `,
       );
       ctx!.onCheatUnlockAll?.(() => melody);
     }
@@ -124,7 +130,7 @@ async function completeAnimation(): Promise<void> {
   ctx.setActions([]);
 
   for (let i = 8; i >= 0; i--) {
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, 120));
     cells[i].classList.remove('orange');
   }
 
@@ -139,7 +145,9 @@ async function completeAnimation(): Promise<void> {
   ctx.setActions([
     {
       label: 'New Puzzle',
-      handler: () => { if (!playing) generatePuzzle(); },
+      handler: () => {
+        if (!playing) generatePuzzle();
+      },
     },
     {
       label: 'Reset',
@@ -166,17 +174,16 @@ export const door01: PuzzleModule = {
 
     const keypad = document.createElement('div');
     keypad.id = 'keypad';
-    keypad.innerHTML = Array.from({ length: 9 }, (_, i) =>
-      `<button class="cell" data-idx="${i}">${i + 1}</button>`
+    keypad.innerHTML = Array.from(
+      { length: 9 },
+      (_, i) => `<button class="cell" data-idx="${i}">${i + 1}</button>`,
     ).join('');
     container.appendChild(keypad);
 
     cells = Array.from(keypad.querySelectorAll('.cell')) as HTMLButtonElement[];
 
     for (const cell of cells) {
-      cell.addEventListener('click', () =>
-        press(parseInt(cell.dataset.idx!, 10))
-      );
+      cell.addEventListener('click', () => press(parseInt(cell.dataset.idx!, 10)));
     }
 
     generatePuzzle();
@@ -195,7 +202,9 @@ export const door01: PuzzleModule = {
     ctx.setActions([
       {
         label: 'New Puzzle',
-        handler: () => { if (!playing) generatePuzzle(); },
+        handler: () => {
+          if (!playing) generatePuzzle();
+        },
       },
       {
         label: 'Reset',
