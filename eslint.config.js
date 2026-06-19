@@ -1,7 +1,7 @@
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import lit from 'eslint-plugin-lit';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default [
   {

@@ -1,16 +1,16 @@
-import { LitElement, html } from 'lit';
+import { html, LitElement } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { initAudioOnFirstClick, playTone, playChime, playMelody as pMelody } from '../audio';
+import { initAudioOnFirstClick, playChime, playTone, playMelody as pMelody } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
 import type { ActionButton, MenuEntry, PuzzleContext, PuzzleModule, StatusInfo } from '../types';
-import './app-header';
-import './puzzle-menu';
-import './status-bar';
 import './app-footer';
+import './app-header';
 import './complete-overlay';
 import './melody-composer';
 import './puzzle-host';
+import './puzzle-menu';
+import './status-bar';
 
 interface UnlockData {
   tutorialStep: number;

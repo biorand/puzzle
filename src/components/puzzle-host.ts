@@ -1,6 +1,6 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import type { PuzzleModule, PuzzleContext } from '../types';
+import type { PuzzleContext, PuzzleModule } from '../types';
 
 export class PuzzleHost extends LitElement {
   @property({ type: Object }) module: PuzzleModule | null = null;

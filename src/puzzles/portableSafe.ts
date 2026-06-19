@@ -19,7 +19,6 @@ let chain = 0;
 let startIdx = -1;
 let moves = 0;
 let playing = false;
-let wrongFlash: number | null = null;
 let mapping: number[] = [];
 
 let container: HTMLElement | null = null;
@@ -38,8 +37,8 @@ function render(): void {
   for (let j = 0; j < NUM_BTNS; j++) ringLights[j].classList.remove('chain');
   for (let i = 0; i < NUM_BTNS; i++) {
     const ic = inChain(i);
-    if (ic || i === wrongFlash) ringLights[mapping[i]].classList.add('chain');
-    gridBtns[i].classList.toggle('pressed', ic || i === wrongFlash);
+    if (ic) ringLights[mapping[i]].classList.add('chain');
+    gridBtns[i].classList.toggle('pressed', ic);
     gridBtns[i].disabled = ic;
   }
   if (ctx) ctx.setStatus({ moves, optimal: NUM_BTNS * 2 - 2 });
@@ -58,13 +57,11 @@ function generatePuzzle(): void {
   chain = 0;
   startIdx = -1;
   moves = 0;
-  wrongFlash = null;
   render();
 }
 
 function press(idx: number): void {
   if (playing || !ctx) return;
-  wrongFlash = null;
 
   const lightIdx = mapping[idx];
 
@@ -83,11 +80,11 @@ function press(idx: number): void {
       render();
       if (chain === NUM_BTNS) completeAnimation();
     } else {
-      wrongFlash = idx;
-      chain = 0;
-      startIdx = -1;
+      // Wrong press — reset chain and start a new one from this button
+      startIdx = lightIdx;
+      chain = 1;
       moves++;
-      ctx.playTone(0);
+      ctx.playTone(chain / NUM_BTNS);
       render();
     }
   }
@@ -98,7 +95,6 @@ function resetPuzzle(): void {
   chain = 0;
   startIdx = -1;
   moves = 0;
-  wrongFlash = null;
   render();
 }
 
