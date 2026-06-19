@@ -9,28 +9,28 @@ import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
 
 export const puzzles = new Map<string, PuzzleModule>([
-  [keypad.id, keypad],
-  [portableSafe.id, portableSafe],
-  [powerPanel.id, powerPanel],
-  [stagla.id, stagla],
-  [graveyard.id, graveyard],
-  [slidingBlock.id, slidingBlock],
-  [labPuzzle.id, labPuzzle],
-  [plant43.id, plant43],
+    [keypad.id, keypad],
+    [portableSafe.id, portableSafe],
+    [powerPanel.id, powerPanel],
+    [stagla.id, stagla],
+    [graveyard.id, graveyard],
+    [slidingBlock.id, slidingBlock],
+    [labPuzzle.id, labPuzzle],
+    [plant43.id, plant43],
 ]);
 
 export const puzzleOrder = [
-  'keypad',
-  'portableSafe',
-  'powerPanel',
-  'stagla',
-  'graveyard',
-  'slidingBlock',
-  'labPuzzle',
-  'plant43',
+    'keypad',
+    'portableSafe',
+    'powerPanel',
+    'stagla',
+    'graveyard',
+    'slidingBlock',
+    'labPuzzle',
+    'plant43',
 ];
 
 export const puzzlesByPath = new Map<string, PuzzleModule>();
 for (const p of puzzles.values()) {
-  puzzlesByPath.set(`${p.sourceGame}/${p.slug}`, p);
+    puzzlesByPath.set(`${p.sourceGame}/${p.slug}`, p);
 }

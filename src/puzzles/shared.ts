@@ -12,75 +12,75 @@ export const UMBRELLA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 
 </svg>`;
 
 export function makeActions(
-  playingRef: { value: boolean },
-  generate: () => void,
-  reset: () => void,
+    playingRef: { value: boolean },
+    generate: () => void,
+    reset: () => void,
 ): ActionButton[] {
-  return [
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        if (!playingRef.value) generate();
-      },
-    },
-    {
-      label: 'Reset',
-      handler: () => {
-        if (!playingRef.value) reset();
-      },
-    },
-  ];
+    return [
+        {
+            label: 'New Puzzle',
+            handler: () => {
+                if (!playingRef.value) generate();
+            },
+        },
+        {
+            label: 'Reset',
+            handler: () => {
+                if (!playingRef.value) reset();
+            },
+        },
+    ];
 }
 
 export async function completePuzzle(
-  ctx: PuzzleContext | null,
-  playingRef: { value: boolean },
-  animate: () => Promise<void>,
-  generate: () => void,
-  reset: () => void,
-  playChime = true,
+    ctx: PuzzleContext | null,
+    playingRef: { value: boolean },
+    animate: () => Promise<void>,
+    generate: () => void,
+    reset: () => void,
+    playChime = true,
 ): Promise<void> {
-  if (!ctx) return;
-  playingRef.value = true;
-  ctx.setActions([]);
-  if (playChime) ctx.playChime();
+    if (!ctx) return;
+    playingRef.value = true;
+    ctx.setActions([]);
+    if (playChime) ctx.playChime();
 
-  await animate();
+    await animate();
 
-  const nextMod = ctx.score.increment();
-  if (nextMod) {
-    await ctx.showOverlay(nextMod);
-    return;
-  }
+    const nextMod = ctx.score.increment();
+    if (nextMod) {
+        await ctx.showOverlay(nextMod);
+        return;
+    }
 
-  await ctx.showOverlay();
-  generate();
-  ctx.setActions(makeActions(playingRef, generate, reset));
-  playingRef.value = false;
+    await ctx.showOverlay();
+    generate();
+    ctx.setActions(makeActions(playingRef, generate, reset));
+    playingRef.value = false;
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+    return new Promise((r) => setTimeout(r, ms));
 }
 
 export function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
 }
 
 export async function flashElements(
-  els: Element[],
-  loops = 3,
-  ms = 150,
-  className = 'flash',
+    els: Element[],
+    loops = 3,
+    ms = 150,
+    className = 'flash',
 ): Promise<void> {
-  for (let f = 0; f < loops; f++) {
-    for (const el of els) el.classList.add(className);
-    await sleep(ms);
-    for (const el of els) el.classList.remove(className);
-    await sleep(ms);
-  }
+    for (let f = 0; f < loops; f++) {
+        for (const el of els) el.classList.add(className);
+        await sleep(ms);
+        for (const el of els) el.classList.remove(className);
+        await sleep(ms);
+    }
 }

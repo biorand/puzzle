@@ -17,171 +17,171 @@ let ringArrows: HTMLDivElement[] = [];
 let gridBtns: HTMLButtonElement[] = [];
 
 function render(): void {
-  const inChain = (i: number): boolean => {
-    if (chain === 0) return false;
-    const end = startIdx + chain;
-    if (end <= NUM_BTNS) return mapping[i] >= startIdx && mapping[i] < end;
-    return mapping[i] >= startIdx || mapping[i] < end - NUM_BTNS;
-  };
-  for (let j = 0; j < NUM_BTNS; j++) ringLights[j].classList.remove('chain');
-  for (let i = 0; i < NUM_BTNS; i++) {
-    const ic = inChain(i);
-    if (ic) ringLights[mapping[i]].classList.add('chain');
-    gridBtns[i].classList.toggle('pressed', ic);
-    gridBtns[i].disabled = ic;
-  }
-  if (ctx) ctx.setStatus({ moves, optimal: NUM_BTNS * 2 - 2 });
+    const inChain = (i: number): boolean => {
+        if (chain === 0) return false;
+        const end = startIdx + chain;
+        if (end <= NUM_BTNS) return mapping[i] >= startIdx && mapping[i] < end;
+        return mapping[i] >= startIdx || mapping[i] < end - NUM_BTNS;
+    };
+    for (let j = 0; j < NUM_BTNS; j++) ringLights[j].classList.remove('chain');
+    for (let i = 0; i < NUM_BTNS; i++) {
+        const ic = inChain(i);
+        if (ic) ringLights[mapping[i]].classList.add('chain');
+        gridBtns[i].classList.toggle('pressed', ic);
+        gridBtns[i].disabled = ic;
+    }
+    if (ctx) ctx.setStatus({ moves, optimal: NUM_BTNS * 2 - 2 });
 }
 
 function generatePuzzle(): void {
-  mapping = shuffle(Array.from({ length: NUM_BTNS }, (_, i) => i));
-  chain = 0;
-  startIdx = -1;
-  moves = 0;
-  render();
+    mapping = shuffle(Array.from({ length: NUM_BTNS }, (_, i) => i));
+    chain = 0;
+    startIdx = -1;
+    moves = 0;
+    render();
 }
 
 function press(idx: number): void {
-  if (playingRef.value || !ctx) return;
+    if (playingRef.value || !ctx) return;
 
-  const lightIdx = mapping[idx];
+    const lightIdx = mapping[idx];
 
-  if (chain === 0) {
-    startIdx = lightIdx;
-    chain = 1;
-    moves++;
-    ctx.playTone(chain / NUM_BTNS);
-    render();
-  } else {
-    const expected = (startIdx + chain) % NUM_BTNS;
-    if (lightIdx === expected) {
-      chain++;
-      moves++;
-      ctx.playTone(chain / NUM_BTNS);
-      render();
-      if (chain === NUM_BTNS) completeAnimation();
+    if (chain === 0) {
+        startIdx = lightIdx;
+        chain = 1;
+        moves++;
+        ctx.playTone(chain / NUM_BTNS);
+        render();
     } else {
-      // Wrong press — reset chain and start a new one from this button
-      startIdx = lightIdx;
-      chain = 1;
-      moves++;
-      ctx.playTone(chain / NUM_BTNS);
-      render();
+        const expected = (startIdx + chain) % NUM_BTNS;
+        if (lightIdx === expected) {
+            chain++;
+            moves++;
+            ctx.playTone(chain / NUM_BTNS);
+            render();
+            if (chain === NUM_BTNS) completeAnimation();
+        } else {
+            // Wrong press — reset chain and start a new one from this button
+            startIdx = lightIdx;
+            chain = 1;
+            moves++;
+            ctx.playTone(chain / NUM_BTNS);
+            render();
+        }
     }
-  }
 }
 
 function resetPuzzle(): void {
-  if (playingRef.value) return;
-  chain = 0;
-  startIdx = -1;
-  moves = 0;
-  render();
+    if (playingRef.value) return;
+    chain = 0;
+    startIdx = -1;
+    moves = 0;
+    render();
 }
 
 async function completeAnimation(): Promise<void> {
-  await completePuzzle(
-    ctx,
-    playingRef,
-    async () => {
-      for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain', i % 2 === 0);
+    await completePuzzle(
+        ctx,
+        playingRef,
+        async () => {
+            for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain', i % 2 === 0);
 
-      const melody = ctx!.playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
+            const melody = ctx!.playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
 
-      const interval = setInterval(() => {
-        for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain');
-      }, 500);
+            const interval = setInterval(() => {
+                for (let i = 0; i < NUM_BTNS; i++) ringLights[i].classList.toggle('chain');
+            }, 500);
 
-      await melody;
-      clearInterval(interval);
+            await melody;
+            clearInterval(interval);
 
-      for (let i = 0; i < NUM_BTNS; i++) {
-        ringLights[i].classList.remove('chain');
-        await sleep(100);
-      }
-    },
-    generatePuzzle,
-    resetPuzzle,
-  );
+            for (let i = 0; i < NUM_BTNS; i++) {
+                ringLights[i].classList.remove('chain');
+                await sleep(100);
+            }
+        },
+        generatePuzzle,
+        resetPuzzle,
+    );
 }
 
 function buildRing(): void {
-  ringLights = [];
-  ringArrows = [];
+    ringLights = [];
+    ringArrows = [];
 
-  const wrap = document.createElement('div');
-  wrap.id = 'safe-ring-wrap';
+    const wrap = document.createElement('div');
+    wrap.id = 'safe-ring-wrap';
 
-  const inner = document.createElement('div');
-  inner.id = 'safe-ring-inner';
-  wrap.appendChild(inner);
+    const inner = document.createElement('div');
+    inner.id = 'safe-ring-inner';
+    wrap.appendChild(inner);
 
-  const N = NUM_BTNS;
-  const cx = 50,
-    cy = 50;
-  const rLight = 37.27,
-    rArrow = 34.55;
+    const N = NUM_BTNS;
+    const cx = 50,
+        cy = 50;
+    const rLight = 37.27,
+        rArrow = 34.55;
 
-  for (let i = 0; i < N; i++) {
-    const lightAngle = (360 / N) * (i + 0.5);
-    const la = (lightAngle * Math.PI) / 180;
-    const lx = cx + rLight * Math.cos(la);
-    const ly = cy - rLight * Math.sin(la);
+    for (let i = 0; i < N; i++) {
+        const lightAngle = (360 / N) * (i + 0.5);
+        const la = (lightAngle * Math.PI) / 180;
+        const lx = cx + rLight * Math.cos(la);
+        const ly = cy - rLight * Math.sin(la);
 
-    const light = document.createElement('div');
-    light.className = 'safe-light';
-    light.style.left = `${lx}%`;
-    light.style.top = `${ly}%`;
-    inner.appendChild(light);
-    ringLights.push(light);
+        const light = document.createElement('div');
+        light.className = 'safe-light';
+        light.style.left = `${lx}%`;
+        light.style.top = `${ly}%`;
+        inner.appendChild(light);
+        ringLights.push(light);
 
-    const arrowAngle = (360 / N) * (i + 1);
-    const aa = (arrowAngle * Math.PI) / 180;
-    const ax = cx + rArrow * Math.cos(aa);
-    const ay = cy - rArrow * Math.sin(aa);
+        const arrowAngle = (360 / N) * (i + 1);
+        const aa = (arrowAngle * Math.PI) / 180;
+        const ax = cx + rArrow * Math.cos(aa);
+        const ay = cy - rArrow * Math.sin(aa);
 
-    const arrow = document.createElement('div');
-    arrow.className = 'safe-arrow';
-    arrow.textContent = '⏏';
-    arrow.style.left = `${ax}%`;
-    arrow.style.top = `${ay}%`;
-    arrow.style.transform = `rotate(${-arrowAngle}deg)`;
-    inner.appendChild(arrow);
-    ringArrows.push(arrow);
-  }
+        const arrow = document.createElement('div');
+        arrow.className = 'safe-arrow';
+        arrow.textContent = '⏏';
+        arrow.style.left = `${ax}%`;
+        arrow.style.top = `${ay}%`;
+        arrow.style.transform = `rotate(${-arrowAngle}deg)`;
+        inner.appendChild(arrow);
+        ringArrows.push(arrow);
+    }
 
-  const logo = document.createElement('div');
-  logo.id = 'umbrella-logo';
-  logo.style.width = `66%`;
-  logo.style.height = `66%`;
-  logo.innerHTML = UMBRELLA_SVG;
-  inner.appendChild(logo);
+    const logo = document.createElement('div');
+    logo.id = 'umbrella-logo';
+    logo.style.width = `66%`;
+    logo.style.height = `66%`;
+    logo.innerHTML = UMBRELLA_SVG;
+    inner.appendChild(logo);
 
-  container!.appendChild(wrap);
+    container!.appendChild(wrap);
 }
 
 function buildGrid(): void {
-  gridBtns = [];
+    gridBtns = [];
 
-  const grid = document.createElement('div');
-  grid.id = 'safe-grid';
+    const grid = document.createElement('div');
+    grid.id = 'safe-grid';
 
-  for (let row = 0; row < GRID_SIZE; row++) {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'safe-row';
-    for (let col = 0; col < 2; col++) {
-      const idx = row * 2 + col;
-      const btn = document.createElement('button');
-      btn.className = 'safe-btn';
-      btn.textContent = String(idx + 1);
-      btn.addEventListener('click', () => press(idx));
-      rowDiv.appendChild(btn);
-      gridBtns.push(btn);
+    for (let row = 0; row < GRID_SIZE; row++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'safe-row';
+        for (let col = 0; col < 2; col++) {
+            const idx = row * 2 + col;
+            const btn = document.createElement('button');
+            btn.className = 'safe-btn';
+            btn.textContent = String(idx + 1);
+            btn.addEventListener('click', () => press(idx));
+            rowDiv.appendChild(btn);
+            gridBtns.push(btn);
+        }
+        grid.appendChild(rowDiv);
     }
-    grid.appendChild(rowDiv);
-  }
 
-  container!.appendChild(grid);
+    container!.appendChild(grid);
 }
 
 const SAFE_THUMB = `<svg viewBox="0 0 120 120" fill="none">
@@ -199,34 +199,34 @@ const SAFE_THUMB = `<svg viewBox="0 0 120 120" fill="none">
 </svg>`;
 
 export const portableSafe: PuzzleModule = {
-  id: 'portableSafe',
-  slug: 'portable-safe',
-  sourceGame: 're2r',
-  name: 'Portable Safe',
-  thumbnail: SAFE_THUMB,
+    id: 'portableSafe',
+    slug: 'portable-safe',
+    sourceGame: 're2r',
+    name: 'Portable Safe',
+    thumbnail: SAFE_THUMB,
 
-  create(c: HTMLElement, context: PuzzleContext) {
-    container = c;
-    ctx = context;
+    create(c: HTMLElement, context: PuzzleContext) {
+        container = c;
+        ctx = context;
 
-    ringLights = [];
-    ringArrows = [];
-    buildRing();
-    buildGrid();
-    generatePuzzle();
-
-    ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
-
-    return {
-      destroy(): void {
         ringLights = [];
         ringArrows = [];
-        gridBtns = [];
-        container!.innerHTML = '';
-        container = null;
-        ctx = null;
-        playingRef.value = false;
-      },
-    };
-  },
+        buildRing();
+        buildGrid();
+        generatePuzzle();
+
+        ctx.setActions(makeActions(playingRef, generatePuzzle, resetPuzzle));
+
+        return {
+            destroy(): void {
+                ringLights = [];
+                ringArrows = [];
+                gridBtns = [];
+                container!.innerHTML = '';
+                container = null;
+                ctx = null;
+                playingRef.value = false;
+            },
+        };
+    },
 };
