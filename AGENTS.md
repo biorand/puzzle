@@ -39,4 +39,5 @@ This ensures consistent formatting and catches lint issues early.
 - **`src/puzzles/*.ts`** — imperative puzzle game logic (unchanged, wrapped by PuzzleHost)
 - **`src/types.ts`** — shared TypeScript interfaces
 - **`src/audio.ts`** — Web Audio API helpers
+- **`test/puzzles/*.test.ts`** — per-puzzle Vitest test suites (happy-dom environment)
 - **`style.css`** — global styles (light DOM)

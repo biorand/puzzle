@@ -106,11 +106,11 @@ export class RepuzzlesApp extends LitElement {
   private _isUnlocked(puzzleId: string): boolean {
     const data = this._getUnlockData();
     if (data.unlockedAll) return true;
-    if (puzzleId === 'door01') return true;
+    if (puzzleId === 'keypad') return true;
     const idx = puzzleOrder.indexOf(puzzleId);
     if (idx <= 0) return false;
     const prevId = puzzleOrder[idx - 1];
-    if (prevId === 'door01') return data.tutorialStep >= 5;
+    if (prevId === 'keypad') return data.tutorialStep >= 5;
     return this._getScore(prevId) >= 1;
   }
 
@@ -173,7 +173,7 @@ export class RepuzzlesApp extends LitElement {
 
     let tutorialStep: number | undefined;
     let forceDifficulty: number | undefined;
-    if (mod.id === 'door01') {
+    if (mod.id === 'keypad') {
       const data = this._getUnlockData();
       if (!data.unlockedAll && data.tutorialStep < 5) {
         tutorialStep = data.tutorialStep;
@@ -234,8 +234,8 @@ export class RepuzzlesApp extends LitElement {
           self._setScore(mod.id, n);
           self._score = n;
 
-          // Advance door01 tutorial step
-          if (mod.id === 'door01') {
+          // Advance keypad tutorial step
+          if (mod.id === 'keypad') {
             const data = self._getUnlockData();
             if (!data.unlockedAll && data.tutorialStep < 5) {
               data.tutorialStep++;

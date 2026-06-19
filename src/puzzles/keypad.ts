@@ -163,8 +163,8 @@ async function completeAnimation(): Promise<void> {
   playing = false;
 }
 
-export const door01: PuzzleModule = {
-  id: 'door01',
+export const keypad: PuzzleModule = {
+  id: 'keypad',
   slug: 'keypad',
   sourceGame: 're1',
   name: 'Keypad',

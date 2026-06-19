@@ -1,19 +1,19 @@
 import type { PuzzleModule } from '../types';
-import { door01 } from './door01';
+import { keypad } from './keypad';
 import { graveyard } from './graveyard';
 import { portableSafe } from './portableSafe';
 import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
 
 export const puzzles = new Map<string, PuzzleModule>([
-  [door01.id, door01],
+  [keypad.id, keypad],
   [portableSafe.id, portableSafe],
   [stagla.id, stagla],
   [graveyard.id, graveyard],
   [slidingBlock.id, slidingBlock],
 ]);
 
-export const puzzleOrder = ['door01', 'portableSafe', 'stagla', 'graveyard', 'slidingBlock'];
+export const puzzleOrder = ['keypad', 'portableSafe', 'stagla', 'graveyard', 'slidingBlock'];
 
 export const puzzlesByPath = new Map<string, PuzzleModule>();
 for (const p of puzzles.values()) {
