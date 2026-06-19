@@ -242,6 +242,7 @@ export const graveyard: PuzzleModule = {
         const angleDeg = (360 / N) * i - 90;
         const rad = (angleDeg * Math.PI) / 180;
         const el = symbolEls[i];
+        if (!el) continue;
         el.style.left = `${cx + r * Math.cos(rad)}px`;
         el.style.top = `${cy + r * Math.sin(rad)}px`;
         el.style.width = `${symSize}px`;
@@ -251,15 +252,19 @@ export const graveyard: PuzzleModule = {
         el.style.fontSize = `${fontSize}px`;
       }
 
-      pointerEl.style.borderLeftWidth = `${ptrW}px`;
-      pointerEl.style.borderRightWidth = `${ptrW}px`;
-      pointerEl.style.borderBottomWidth = `${ptrLen}px`;
-      pointerEl.style.marginLeft = `${-ptrW}px`;
-      pointerEl.style.marginTop = `${-ptrLen}px`;
-      pointerEl.style.transformOrigin = `${ptrW}px ${ptrLen}px`;
+      if (pointerEl) {
+        pointerEl.style.borderLeftWidth = `${ptrW}px`;
+        pointerEl.style.borderRightWidth = `${ptrW}px`;
+        pointerEl.style.borderBottomWidth = `${ptrLen}px`;
+        pointerEl.style.marginLeft = `${-ptrW}px`;
+        pointerEl.style.marginTop = `${-ptrLen}px`;
+        pointerEl.style.transformOrigin = `${ptrW}px ${ptrLen}px`;
+      }
 
-      logo.style.width = `${logoSize}px`;
-      logo.style.height = `${logoSize}px`;
+      if (logo) {
+        logo.style.width = `${logoSize}px`;
+        logo.style.height = `${logoSize}px`;
+      }
     }
 
     requestAnimationFrame(() => positionDial());

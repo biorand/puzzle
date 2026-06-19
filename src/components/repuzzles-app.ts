@@ -12,11 +12,6 @@ import './puzzle-host';
 import './puzzle-menu';
 import './status-bar';
 
-interface UnlockData {
-  tutorialStep: number;
-  unlockedAll: boolean;
-}
-
 type Page = 'menu' | 'puzzle' | 'melody';
 
 export class RepuzzlesApp extends LitElement {
@@ -89,29 +84,24 @@ export class RepuzzlesApp extends LitElement {
     localStorage.setItem(`repuzzles-${id}-score`, String(n));
   }
 
-  private _getUnlockData(): UnlockData {
-    try {
-      const raw = localStorage.getItem('repuzzles-unlock');
-      if (raw) return JSON.parse(raw);
-    } catch {
-      /* ignore */
-    }
-    return { tutorialStep: 0, unlockedAll: false };
+  private _getProgress(): number {
+    return parseInt(localStorage.getItem('repuzzles-progress') || '0', 10);
   }
 
-  private _saveUnlockData(data: UnlockData): void {
-    localStorage.setItem('repuzzles-unlock', JSON.stringify(data));
+  private _setProgress(n: number): void {
+    localStorage.setItem('repuzzles-progress', String(n));
+  }
+
+  private _getKeypadTutorial(): number {
+    return parseInt(localStorage.getItem('repuzzles-keypad-tutorial') || '0', 10);
+  }
+
+  private _setKeypadTutorial(n: number): void {
+    localStorage.setItem('repuzzles-keypad-tutorial', String(n));
   }
 
   private _isUnlocked(puzzleId: string): boolean {
-    const data = this._getUnlockData();
-    if (data.unlockedAll) return true;
-    if (puzzleId === 'keypad') return true;
-    const idx = puzzleOrder.indexOf(puzzleId);
-    if (idx <= 0) return false;
-    const prevId = puzzleOrder[idx - 1];
-    if (prevId === 'keypad') return data.tutorialStep >= 5;
-    return this._getScore(prevId) >= 1;
+    return puzzleOrder.indexOf(puzzleId) <= this._getProgress();
   }
 
   private _getRequirementLabel(id: string): string | undefined {
@@ -175,10 +165,10 @@ export class RepuzzlesApp extends LitElement {
     let tutorialStep: number | undefined;
     let forceDifficulty: number | undefined;
     if (mod.id === 'keypad') {
-      const data = this._getUnlockData();
-      if (!data.unlockedAll && data.tutorialStep < 5) {
-        tutorialStep = data.tutorialStep;
-        forceDifficulty = [1, 1, 2, 2, 3][data.tutorialStep];
+      const step = this._getKeypadTutorial();
+      if (step < 5) {
+        tutorialStep = step;
+        forceDifficulty = [1, 1, 2, 2, 3][step];
       }
     }
 
@@ -231,24 +221,31 @@ export class RepuzzlesApp extends LitElement {
           const nextId = idx >= 0 && idx < puzzleOrder.length - 1 ? puzzleOrder[idx + 1] : null;
           const wasNextUnlocked = nextId ? self._isUnlocked(nextId) : true;
 
+          // Increment per-puzzle score (for display only)
           const n = self._getScore(mod.id) + 1;
           self._setScore(mod.id, n);
           self._score = n;
 
-          // Advance keypad tutorial step
+          // Advance keypad tutorial step (all 5 must be done before progress advances)
           if (mod.id === 'keypad') {
-            const data = self._getUnlockData();
-            if (!data.unlockedAll && data.tutorialStep < 5) {
-              data.tutorialStep++;
-              self._saveUnlockData(data);
-              if (data.tutorialStep < 5) {
-                ctx.forceDifficulty = [1, 1, 2, 2, 3][data.tutorialStep];
-                ctx.tutorialStep = data.tutorialStep;
+            const step = self._getKeypadTutorial();
+            if (step < 5) {
+              const newStep = step + 1;
+              self._setKeypadTutorial(newStep);
+              if (newStep < 5) {
+                ctx.forceDifficulty = [1, 1, 2, 2, 3][newStep];
+                ctx.tutorialStep = newStep;
               } else {
                 ctx.forceDifficulty = undefined;
                 ctx.tutorialStep = undefined;
+                // After all 5 tutorial steps, advance progress to unlock portableSafe
+                if (self._getProgress() < 1) self._setProgress(1);
               }
             }
+          } else {
+            // Non-keypad puzzle: advance progress to unlock the next one
+            const newProgress = Math.max(self._getProgress(), idx + 1);
+            self._setProgress(newProgress);
           }
 
           // Check if this completion unlocks the next puzzle
@@ -263,9 +260,7 @@ export class RepuzzlesApp extends LitElement {
       },
 
       onCheatUnlockAll: (playMelodyFn?: () => Promise<void>) => {
-        const data = self._getUnlockData();
-        data.unlockedAll = true;
-        self._saveUnlockData(data);
+        self._setProgress(puzzleOrder.length - 1);
         if (playMelodyFn) {
           self._overlayNextName = 'ALL PUZZLES';
           self._overlayMessage = 'CHEAT ACTIVATED';

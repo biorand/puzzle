@@ -1240,3 +1240,158 @@ button,
     border-radius: 0 0 28px 28px;
   }
 }
+
+/* ── Plant 43 (Herbicide Dispenser) ── */
+
+.plant43-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 90%;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.plant43-target-line {
+  position: absolute;
+  left: 2%;
+  width: 29.33%;
+  height: 2.5px;
+  background: #ff3333;
+  z-index: 5;
+  box-shadow: 0 0 6px rgba(255, 51, 51, 0.6);
+}
+
+.plant43-target-line::before,
+.plant43-target-line::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 6px;
+  height: 8px;
+  background: #ff3333;
+  border-radius: 1px;
+}
+
+.plant43-target-line::before {
+  left: -2px;
+}
+
+.plant43-target-line::after {
+  right: -2px;
+}
+
+.plant43-tube {
+  position: absolute;
+  bottom: 24px;
+  width: 33.33%;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  transition: left 0.35s ease;
+  z-index: 2;
+}
+
+.plant43-tube-glass {
+  width: 44px;
+  border: 2px solid #555;
+  border-radius: 4px 4px 6px 6px;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.07) 100%);
+}
+
+.plant43-tube-fill {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  background: linear-gradient(to top, #0a6a0a, #0f0);
+  border-radius: 0 0 4px 4px;
+  transition: height 0.525s ease;
+}
+
+.plant43-tube-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.plant43-tube-marker {
+  position: absolute;
+  left: 6px;
+  right: 16px;
+  height: 0;
+  display: flex;
+  align-items: center;
+}
+
+.plant43-tube-marker-line {
+  flex: 1;
+  height: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.plant43-tube-marker-label {
+  position: absolute;
+  right: -14px;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'Cutive Mono', monospace;
+  line-height: 1;
+}
+
+.plant43-tube[data-slot='0'].winning .plant43-tube-glass {
+  border-color: #0f0;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
+}
+
+.plant43-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  width: 90%;
+  max-width: 280px;
+  margin: 0 auto;
+  justify-items: center;
+  padding: 2px 0 8px;
+  flex-shrink: 0;
+}
+
+.plant43-btn {
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.1s,
+    filter 0.1s;
+}
+
+.plant43-btn:active {
+  transform: scale(0.9);
+  filter: brightness(1.3);
+}
+
+.plant43-btn .material-symbols-outlined {
+  font-size: 28px;
+}
+
+.plant43-btn.btn-red {
+  background: #a00;
+  box-shadow: 0 3px 0 #700;
+}
+
+.plant43-btn.btn-blue {
+  background: #006;
+  box-shadow: 0 3px 0 #004;
+}
+
+.plant43-btn.btn-green {
+  background: #060;
+  box-shadow: 0 3px 0 #040;
+}
