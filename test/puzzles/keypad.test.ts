@@ -1,103 +1,130 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { keypad } from '../../src/puzzles/keypad';
-import type { PuzzleContext } from '../../src/types';
+import { PuzzleKeypad } from '../../src/puzzles/puzzle-keypad';
 
-function createMockContext(): PuzzleContext {
-    return {
-        setStatus: vi.fn(),
-        setActions: vi.fn(),
-        showOverlay: vi.fn().mockResolvedValue(undefined),
-        hideOverlay: vi.fn(),
-        playTone: vi.fn(),
-        playChime: vi.fn(),
-        playMelody: vi.fn().mockResolvedValue(undefined),
-        score: { count: 0, increment: vi.fn().mockReturnValue(null) },
-    };
-}
+vi.mock('../../src/audio', () => ({
+    playTone: vi.fn(),
+    playChime: vi.fn(),
+    playMelody: vi.fn().mockResolvedValue(undefined),
+    initAudioOnFirstClick: vi.fn(),
+}));
 
-describe('keypad', () => {
+describe('puzzle-keypad', () => {
     afterEach(() => {
+        document.body.innerHTML = '';
         vi.restoreAllMocks();
     });
 
-    it('creates 9 buttons inside #keypad', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = keypad.create(container, ctx);
+    it('custom element is defined', () => {
+        const el = document.createElement('puzzle-keypad');
+        expect(el).toBeInstanceOf(PuzzleKeypad);
+    });
 
-        const keypadEl = container.querySelector('#keypad');
+    it('creates 9 buttons inside #keypad', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const keypadEl = el.querySelector('#keypad');
         expect(keypadEl).not.toBeNull();
 
-        const buttons = container.querySelectorAll<HTMLButtonElement>('#keypad .cell');
+        const buttons = el.querySelectorAll<HTMLButtonElement>('#keypad .cell');
         expect(buttons.length).toBe(9);
-
         buttons.forEach((btn, i) => {
-            expect(btn.textContent).toBe(String(i + 1));
+            expect(btn.textContent!.trim()).toBe(String(i + 1));
         });
-
-        instance.destroy();
     });
 
-    it('calls setStatus after creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = keypad.create(container, ctx);
+    it('dispatches puzzle-status after creation', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        expect(ctx.setStatus).toHaveBeenCalledWith(expect.objectContaining({ moves: 0 }));
-
-        instance.destroy();
-    });
-
-    it('sets actions on creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = keypad.create(container, ctx);
-
-        expect(ctx.setActions).toHaveBeenCalledWith(
-            expect.arrayContaining([
-                expect.objectContaining({ label: 'New Puzzle' }),
-                expect.objectContaining({ label: 'Reset' }),
-            ]),
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
         );
-
-        instance.destroy();
     });
 
-    it('creates a tutorial div when tutorialStep is provided', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        ctx.tutorialStep = 0;
-        ctx.tutorialTotal = 5;
-        ctx.forceDifficulty = 1;
-        const instance = keypad.create(container, ctx);
+    it('dispatches puzzle-actions on creation', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        const actionsSpy = vi.fn();
+        el.addEventListener('puzzle-actions', actionsSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        const tutorialDiv = container.querySelector('#keypad-tutorial');
+        expect(actionsSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.arrayContaining([
+                    expect.objectContaining({ label: 'New Puzzle' }),
+                    expect.objectContaining({ label: 'Reset' }),
+                ]),
+            }),
+        );
+    });
+
+    it('shows tutorial div when tutorialStep is provided', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        el.tutorialStep = 0;
+        el.forceDifficulty = 1;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const tutorialDiv = el.querySelector('#keypad-tutorial');
         expect(tutorialDiv).not.toBeNull();
         expect(tutorialDiv!.textContent).toContain('Tutorial 1/5');
-
-        instance.destroy();
     });
 
-    it('destroy cleans up the container', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = keypad.create(container, ctx);
+    it('regenerate method resets to a new puzzle', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        instance.destroy();
-        expect(container.innerHTML).toBe('');
+        const actionsSpy = vi.fn();
+        el.addEventListener('puzzle-actions', actionsSpy);
+
+        el.regenerate();
+        await el.updateComplete;
+
+        expect(actionsSpy).toHaveBeenCalled();
     });
 
-    it('press toggles a cell class and increments moves', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = keypad.create(container, ctx);
+    it('clicking a button dispatches puzzle-status with incremented moves', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        const buttons = container.querySelectorAll<HTMLButtonElement>('#keypad .cell');
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        const buttons = el.querySelectorAll<HTMLButtonElement>('#keypad .cell');
         buttons[0].click();
+        await el.updateComplete;
 
-        expect(ctx.setStatus).toHaveBeenCalledWith(expect.objectContaining({ moves: 1 }));
-        expect(ctx.playTone).toHaveBeenCalled();
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 1 }),
+            }),
+        );
+    });
 
-        instance.destroy();
+    it('regenerate event triggers puzzle reset', async () => {
+        const el = document.createElement('puzzle-keypad') as PuzzleKeypad;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        el.dispatchEvent(new CustomEvent('puzzle-regenerate'));
+        await el.updateComplete;
+
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
+        );
     });
 });

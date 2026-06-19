@@ -68,6 +68,18 @@ puzzle-host {
     min-height: 0;
 }
 
+puzzle-keypad,
+puzzle-sliding-block,
+puzzle-stagla {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
 puzzle-menu {
     display: flex;
     flex-direction: column;
