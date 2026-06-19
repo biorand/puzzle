@@ -1,6 +1,7 @@
 import type { PuzzleModule } from '../types';
 import { graveyard } from './graveyard';
 import { keypad } from './keypad';
+import { labPuzzle } from './labPuzzle';
 import { plant43 } from './plant43';
 import { portableSafe } from './portableSafe';
 import { powerPanel } from './powerPanel';
@@ -14,6 +15,7 @@ export const puzzles = new Map<string, PuzzleModule>([
   [stagla.id, stagla],
   [graveyard.id, graveyard],
   [slidingBlock.id, slidingBlock],
+  [labPuzzle.id, labPuzzle],
   [plant43.id, plant43],
 ]);
 
@@ -24,6 +26,7 @@ export const puzzleOrder = [
   'stagla',
   'graveyard',
   'slidingBlock',
+  'labPuzzle',
   'plant43',
 ];
 
