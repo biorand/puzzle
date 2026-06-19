@@ -3,12 +3,14 @@ import { graveyard } from './graveyard';
 import { keypad } from './keypad';
 import { plant43 } from './plant43';
 import { portableSafe } from './portableSafe';
+import { powerPanel } from './powerPanel';
 import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
 
 export const puzzles = new Map<string, PuzzleModule>([
   [keypad.id, keypad],
   [portableSafe.id, portableSafe],
+  [powerPanel.id, powerPanel],
   [stagla.id, stagla],
   [graveyard.id, graveyard],
   [slidingBlock.id, slidingBlock],
@@ -18,6 +20,7 @@ export const puzzles = new Map<string, PuzzleModule>([
 export const puzzleOrder = [
   'keypad',
   'portableSafe',
+  'powerPanel',
   'stagla',
   'graveyard',
   'slidingBlock',
