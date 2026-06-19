@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --minify",
-    "dev": "esbuild src/main.ts --bundle --outfile=dist/app.min.js --sourcemap --watch=forever & sleep 1 && npx http-server . -p 8000 -c-1",
+    "dev": "node scripts/dev.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"*.html\" \"*.css\" \"*.md\" \"*.json\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"*.html\" \"*.css\" \"*.md\" \"*.json\"",
     "lint": "eslint \"src/**/*.ts\"",
