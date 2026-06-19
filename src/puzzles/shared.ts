@@ -58,3 +58,29 @@ export async function completePuzzle(
   ctx.setActions(makeActions(playingRef, generate, reset));
   playingRef.value = false;
 }
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+export function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+export async function flashElements(
+  els: Element[],
+  loops = 3,
+  ms = 150,
+  className = 'flash',
+): Promise<void> {
+  for (let f = 0; f < loops; f++) {
+    for (const el of els) el.classList.add(className);
+    await sleep(ms);
+    for (const el of els) el.classList.remove(className);
+    await sleep(ms);
+  }
+}

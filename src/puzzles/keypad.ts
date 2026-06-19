@@ -1,5 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-import { completePuzzle, makeActions } from './shared';
+import { completePuzzle, makeActions, sleep } from './shared';
 
 const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
 const SOLVED = 0x1ff;
@@ -136,7 +136,7 @@ async function completeAnimation(): Promise<void> {
     playingRef,
     async () => {
       for (let i = 8; i >= 0; i--) {
-        await new Promise((r) => setTimeout(r, 120));
+        await sleep(120);
         cells[i].classList.remove('orange');
       }
     },

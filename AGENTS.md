@@ -15,10 +15,10 @@ A Resident Evil puzzle collection web app built with:
 **After every change, run:**
 
 ```bash
-npm run format && npm run lint
+npm run verify
 ```
 
-This ensures consistent formatting and catches lint issues early.
+This runs format + lint + unit tests + e2e tests to ensure nothing is broken.
 
 ## Available Scripts
 
@@ -26,6 +26,7 @@ This ensures consistent formatting and catches lint issues early.
 | ---------------------- | ------------------------------------- |
 | `npm run build`        | Bundle with esbuild (minified)        |
 | `npm run dev`          | Watch mode + http-server on port 8000 |
+| `npm run verify`       | Format → lint → unit tests → e2e      |
 | `npm run format`       | Format all source files with Prettier |
 | `npm run format:check` | Check formatting without writing      |
 | `npm run lint`         | Lint TypeScript source with ESLint    |

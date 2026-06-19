@@ -1,5 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
+import { UMBRELLA_SVG, completePuzzle, makeActions, sleep } from './shared';
 
 const ROWS = 3;
 const COLS = 3;
@@ -11,13 +11,6 @@ const GOAL = [1, 2, 3, 4, 5, 6, 7, 8, 0];
 const GOAL_STR = GOAL.join(',');
 
 // ── Board helpers ──
-
-function indexOf(board: number[], value: number): number {
-  for (let i = 0; i < board.length; i++) {
-    if (board[i] === value) return i;
-  }
-  return -1;
-}
 
 // Shift all tiles between `clickPos` and `blank` toward `blank`
 function applyShift(board: number[], blank: number, clickPos: number): number[] {
@@ -77,7 +70,7 @@ function getOptimal(startBoard: number[]): number {
   if (startStr === GOAL_STR) return 0;
 
   const dist = new Map<string, number>();
-  const q: Array<[number[], number, string]> = [[startBoard, indexOf(startBoard, 0), startStr]];
+  const q: Array<[number[], number, string]> = [[startBoard, startBoard.indexOf(0), startStr]];
   dist.set(startStr, 0);
 
   let head = 0;
@@ -87,7 +80,7 @@ function getOptimal(startBoard: number[]): number {
 
     for (const nextBoard of possibleMoves(curBoard, blank)) {
       const nextStr = nextBoard.join(',');
-      const nextBlank = indexOf(nextBoard, 0);
+      const nextBlank = nextBoard.indexOf(0);
 
       if (!dist.has(nextStr)) {
         if (nextStr === GOAL_STR) return d + 1;
@@ -111,7 +104,7 @@ function shufflePuzzle(): { board: number[]; optimal: number } {
       const moves = [...possibleMoves(board, blank)];
       const nextBoard = moves[Math.floor(Math.random() * moves.length)];
       for (let i = 0; i < SIZE; i++) board[i] = nextBoard[i];
-      blank = indexOf(board, 0);
+      blank = board.indexOf(0);
     }
     const optimal = getOptimal(board);
     if (optimal > 0) return { board, optimal };
@@ -195,7 +188,7 @@ function generatePuzzle(): void {
   const result = shufflePuzzle();
   board = result.board;
   optimal = result.optimal;
-  blankPos = indexOf(board, 0);
+  blankPos = board.indexOf(0);
   moves = 0;
   playingRef.value = false;
   initialBoard = [...board];
@@ -204,7 +197,7 @@ function generatePuzzle(): void {
 
 function resetPuzzle(): void {
   board = [...initialBoard];
-  blankPos = indexOf(board, 0);
+  blankPos = board.indexOf(0);
   moves = 0;
   playingRef.value = false;
   render();
@@ -215,7 +208,7 @@ function resetPuzzle(): void {
 function pressTile(value: number): void {
   if (playingRef.value || !ctx) return;
 
-  const pos = indexOf(board, value);
+  const pos = board.indexOf(value);
   if (pos === -1) return;
   if (!isSameRowOrCol(blankPos, pos)) return;
 
@@ -247,7 +240,7 @@ async function completeAnimation(): Promise<void> {
       for (let f = 0; f < 3; f++) {
         for (const el of tileEls)
           el.style.filter = f % 2 === 0 ? 'brightness(0.5)' : 'brightness(1)';
-        await new Promise((r) => setTimeout(r, 180));
+        await sleep(180);
       }
       for (const el of tileEls) el.style.filter = '';
 

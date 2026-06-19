@@ -9,19 +9,32 @@ description: Use this skill whenever the user wants to commit changes to a git r
 
 This skill covers staging and committing changes in a git repository. Run all commands from the repository root unless otherwise specified.
 
+## Required Pre-Commit Step
+
+**Before staging any changes, always run `npm run verify`.**
+
+If verify fails, report the failure to the USER and ask whether to:
+1. Fix the issues first (recommended)
+2. Proceed with the commit anyway (user must explicitly choose this)
+
+Do NOT skip or proceed past verify failures without user consent.
+
 ## Basic Workflow
 
 ```bash
-# Check what has changed
+# 1. Run verify first
+npm run verify
+
+# 2. Check what has changed
 git status
 
-# Stage all changes
+# 3. Stage all changes
 git add .
 
-# Or stage specific files
+# 4. Or stage specific files
 git add path/to/file.txt
 
-# Commit with a message
+# 5. Commit with a message
 git commit -m "your commit message here"
 ```
 

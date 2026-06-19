@@ -1,5 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
+import { UMBRELLA_SVG, completePuzzle, makeActions, sleep, shuffle } from './shared';
 
 const GRID_SIZE = 4;
 const NUM_BTNS = GRID_SIZE * 2;
@@ -31,14 +31,6 @@ function render(): void {
     gridBtns[i].disabled = ic;
   }
   if (ctx) ctx.setStatus({ moves, optimal: NUM_BTNS * 2 - 2 });
-}
-
-function shuffle(a: number[]): number[] {
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 function generatePuzzle(): void {
@@ -105,7 +97,7 @@ async function completeAnimation(): Promise<void> {
 
       for (let i = 0; i < NUM_BTNS; i++) {
         ringLights[i].classList.remove('chain');
-        await new Promise((r) => setTimeout(r, 100));
+        await sleep(100);
       }
     },
     generatePuzzle,

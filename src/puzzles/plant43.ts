@@ -1,4 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
+import { makeActions, sleep } from './shared';
 
 type Action = 'red' | 'blue' | 'green';
 
@@ -179,6 +180,7 @@ let puzzleConfig: PuzzleConfig | null = null;
 let moves = 0;
 let won = false;
 let animating = false;
+const playingRef = { value: false };
 
 let tubeEls: HTMLDivElement[] = [];
 let fillBars: HTMLDivElement[] = [];
@@ -307,10 +309,6 @@ function buildButtons(): void {
 
 // ─── Actions ─────────────────────────────────────────────────────────
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 function handleAction(action: Action): void {
   if (won || animating || !currentState || !puzzleConfig || !ctx) return;
 
@@ -382,20 +380,7 @@ async function drainAnimation(): Promise<void> {
   }
 
   newPuzzle();
-  ctx.setActions([
-    {
-      label: 'New Puzzle',
-      handler: () => {
-        newPuzzle();
-      },
-    },
-    {
-      label: 'Reset',
-      handler: () => {
-        restartPuzzle();
-      },
-    },
-  ]);
+  ctx.setActions(makeActions(playingRef, newPuzzle, restartPuzzle));
 }
 
 function restartPuzzle(): void {
@@ -459,20 +444,7 @@ export const plant43: PuzzleModule = {
     buildButtons();
     render();
 
-    ctx.setActions([
-      {
-        label: 'New Puzzle',
-        handler: () => {
-          newPuzzle();
-        },
-      },
-      {
-        label: 'Reset',
-        handler: () => {
-          restartPuzzle();
-        },
-      },
-    ]);
+    ctx.setActions(makeActions(playingRef, newPuzzle, restartPuzzle));
 
     return {
       destroy(): void {

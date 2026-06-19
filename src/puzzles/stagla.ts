@@ -1,5 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-import { completePuzzle, makeActions } from './shared';
+import { completePuzzle, makeActions, sleep, flashElements } from './shared';
 
 const TOGGLES: number[][] = [
   [0, 1],
@@ -117,12 +117,7 @@ async function completeStage(): Promise<void> {
 
   for (let f = 0; f < 3; f++) {
     ctx.playTone(0.5);
-    lightEls[target].classList.add('flash');
-    labelEls[target].classList.add('flash');
-    await new Promise((r) => setTimeout(r, 200));
-    lightEls[target].classList.remove('flash');
-    labelEls[target].classList.remove('flash');
-    await new Promise((r) => setTimeout(r, 200));
+    await flashElements([lightEls[target], labelEls[target]], 1, 200);
   }
 
   completedStages[stage] = true;
@@ -140,13 +135,13 @@ async function completeStage(): Promise<void> {
             labelEls[i].classList.add('flash');
             lightEls[i].classList.add('on');
           }
-          await new Promise((r) => setTimeout(r, 200));
+          await sleep(200);
           for (let i = 0; i < 4; i++) {
             lightEls[i].classList.remove('flash');
             labelEls[i].classList.remove('flash');
             lightEls[i].classList.remove('on');
           }
-          await new Promise((r) => setTimeout(r, 200));
+          await sleep(200);
         }
       },
       generatePuzzle,

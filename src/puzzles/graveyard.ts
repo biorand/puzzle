@@ -1,5 +1,5 @@
 import type { PuzzleContext, PuzzleModule } from '../types';
-import { UMBRELLA_SVG, completePuzzle, makeActions } from './shared';
+import { UMBRELLA_SVG, completePuzzle, makeActions, shuffle, flashElements } from './shared';
 
 const N = 7;
 const STEPS = [3, 4];
@@ -53,15 +53,6 @@ for (let b1 = 0; b1 < N; b1++) {
   }
 }
 
-function shufflePick(arr: string[], n: number): string[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, n);
-}
-
 // ── State ──
 
 let pos = 0;
@@ -83,7 +74,7 @@ let ctx: PuzzleContext | null = null;
 // ── Game logic ──
 
 function generatePuzzle(): void {
-  currentSymbols = shufflePick(ZODIAC, N);
+  currentSymbols = shuffle([...ZODIAC]).slice(0, N);
   const r = reachableTargets[Math.floor(Math.random() * reachableTargets.length)];
   targetMask = r.mask;
   optimal = r.optimal;
@@ -149,12 +140,7 @@ async function completeAnimation(): Promise<void> {
     ctx,
     playingRef,
     async () => {
-      for (let f = 0; f < 5; f++) {
-        for (const el of symbolEls) el.classList.add('flash');
-        await new Promise((r) => setTimeout(r, 150));
-        for (const el of symbolEls) el.classList.remove('flash');
-        await new Promise((r) => setTimeout(r, 150));
-      }
+      await flashElements(symbolEls, 5, 150);
     },
     generatePuzzle,
     resetPuzzle,
