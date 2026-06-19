@@ -15,7 +15,7 @@ test.describe('V-JOLT Puzzle', () => {
     await expect(page.locator('.vjolt-shelf-btn')).toHaveCount(3);
     await expect(page.locator('.vjolt-bottle')).toHaveCount(4);
     await expect(page.locator('.vjolt-btn')).toHaveCount(2);
-    await expect(page.locator('.vjolt-btn-test')).toBeVisible();
+    await expect(page.locator('.vjolt-btn-combine')).toBeVisible();
     await expect(page.locator('.vjolt-btn-discard')).toBeVisible();
 
     const eqs = await page.locator('.vjolt-equation').allTextContents();
@@ -36,14 +36,14 @@ test.describe('V-JOLT Puzzle', () => {
     await expect(firstSlot).not.toHaveClass(/empty/);
   });
 
-  test('combine two bottles and test', async ({ page }) => {
+  test('combine two bottles via COMBINE button', async ({ page }) => {
     await page.locator('.vjolt-shelf-btn').nth(0).click();
     await page.locator('.vjolt-shelf-btn').nth(1).click();
 
     await page.locator('.vjolt-bottle').nth(0).click();
-    await expect(page.locator('.vjolt-bottle').nth(0)).toHaveClass(/selected/);
-
     await page.locator('.vjolt-bottle').nth(1).click();
+
+    await page.locator('.vjolt-btn-combine').click();
     await page.waitForTimeout(300);
 
     const nonEmpty = page.locator('.vjolt-bottle:not(.empty)');
@@ -51,12 +51,13 @@ test.describe('V-JOLT Puzzle', () => {
   });
 
   test('solve puzzle and verify completion', async ({ page }) => {
-    // Read wall data and compute solve plan in page context
+    // Read wall data and compute solve plan
     const solvePlan = await page.evaluate(() => {
-      const legend: Record<string, number> = {};
+      // Legend entries appear in shelf-button order: Water(0), red(1), yellow(2)
+      const legendVals: number[] = [];
       for (const el of document.querySelectorAll('.vjolt-legend-entry')) {
-        const [label, valStr] = (el.textContent || '').split('=');
-        legend[label] = parseInt(valStr, 10);
+        const valStr = (el.textContent || '').split('=')[1];
+        legendVals.push(parseInt(valStr, 10));
       }
 
       const eqs: Array<{ left: number; right: number }> = [];
@@ -65,27 +66,22 @@ test.describe('V-JOLT Puzzle', () => {
         if (m) eqs.push({ left: +m[1], right: +m[2] });
       }
 
-      const { Water, 'UMB #3': Red, 'Yel-6': Yellow } = legend;
-      const valueToLabel: Record<number, string> = {};
-      const labelToShelfIdx: Record<string, number> = {
-        Water: 0,
-        'UMB #3': 1,
-        'Yel-6': 2,
-      };
-      for (const [label, val] of Object.entries(legend)) {
-        valueToLabel[val] = label;
+      const valueToShelfIdx: Record<number, number> = {};
+      for (let i = 0; i < legendVals.length; i++) {
+        valueToShelfIdx[legendVals[i]] = i;
       }
 
       const actions: Array<
-        { type: 'fill'; shelfIdx: number } | { type: 'combine' }
+        | { type: 'fill'; shelfIdx: number }
+        | { type: 'combine'; valA: number; valB: number }
       > = [];
       const bench: number[] = [];
 
       function fillVal(v: number): void {
-        const label = valueToLabel[v];
-        if (label !== undefined) {
+        const shelfIdx = valueToShelfIdx[v];
+        if (shelfIdx !== undefined) {
           bench.push(v);
-          actions.push({ type: 'fill', shelfIdx: labelToShelfIdx[label] });
+          actions.push({ type: 'fill', shelfIdx });
         }
       }
 
@@ -94,7 +90,7 @@ test.describe('V-JOLT Puzzle', () => {
         if (!bench.includes(eq.right)) fillVal(eq.right);
         if (eq.left === eq.right) fillVal(eq.left);
 
-        actions.push({ type: 'combine' });
+        actions.push({ type: 'combine', valA: eq.left, valB: eq.right });
 
         const li = bench.indexOf(eq.left);
         if (li >= 0) bench.splice(li, 1);
@@ -112,18 +108,33 @@ test.describe('V-JOLT Puzzle', () => {
         await page.locator('.vjolt-shelf-btn').nth(action.shelfIdx).click();
         await page.waitForTimeout(100);
       } else {
-        // Click any two non-empty bottles to auto-combine
+        // Find two bottles with values action.valA and action.valB
+        const allBottles = page.locator('.vjolt-bottle');
         const positions: number[] = [];
+
         for (let i = 0; i < 4; i++) {
-          const isE = await page
-            .locator('.vjolt-bottle')
+          const isE = await allBottles
             .nth(i)
             .evaluate((el) => el.classList.contains('empty'));
-          if (!isE) positions.push(i);
+          if (isE) continue;
+
+          const txt = await allBottles
+            .nth(i)
+            .locator('.vjolt-bottle-value')
+            .textContent();
+          const v = parseInt((txt || '').replace('#', ''), 10);
+
+          const target = positions.length === 0 ? action.valA : action.valB;
+          if (v === target) positions.push(i);
+          if (positions.length === 2) break;
         }
-        await page.locator('.vjolt-bottle').nth(positions[0]).click();
+
+        await allBottles.nth(positions[0]).click();
         await page.waitForTimeout(80);
-        await page.locator('.vjolt-bottle').nth(positions[1]).click();
+        await allBottles.nth(positions[1]).click();
+        await page.waitForTimeout(80);
+
+        await page.locator('.vjolt-btn-combine').click();
         await page.waitForTimeout(300);
       }
     }

@@ -1909,18 +1909,49 @@ button,
   filter: brightness(1.2);
 }
 
-.vjolt-btn-test {
-  background: #ff6600;
-  color: #fff;
-  box-shadow: 0 3px 0 #cc5500;
-}
-
-.vjolt-btn-test:not(:disabled):hover {
-  filter: brightness(1.1);
-}
-
 .vjolt-btn-discard {
   background: #555;
   color: #ddd;
   box-shadow: 0 3px 0 #333;
+}
+
+.vjolt-btn-combine {
+  background: #4488ff;
+  color: #fff;
+  box-shadow: 0 3px 0 #2266cc;
+}
+
+.vjolt-btn-combine:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+.vjolt-bottle.poison {
+  border-color: #660;
+  animation: vjolt-toxic 2s ease-in-out infinite;
+}
+
+.vjolt-bottle.poison .vjolt-bottle-fill {
+  background: linear-gradient(to top, #3a3a00, #5a5a00);
+}
+
+.vjolt-bottle.poison .vjolt-bottle-name {
+  color: #cc0;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+@keyframes vjolt-toxic {
+  0%,
+  100% {
+    box-shadow: 0 0 2px rgba(150, 150, 0, 0.3);
+  }
+  25% {
+    box-shadow: 0 0 6px rgba(200, 200, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 2px rgba(150, 150, 0, 0.3);
+  }
+  75% {
+    box-shadow: 0 0 8px rgba(200, 200, 0, 0.6);
+  }
 }

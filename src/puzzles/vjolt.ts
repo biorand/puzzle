@@ -6,6 +6,7 @@ interface Bottle {
   value: number;
   name: string;
   colorClass: string;
+  isPoison: boolean;
 }
 
 interface BaseChem {
@@ -25,17 +26,39 @@ interface PuzzleConfig {
   bases: [BaseChem, BaseChem, BaseChem];
   equations: Equation[];
   target: number;
+  validPairs: string[];
 }
 
 const SLOTS = 4;
+const nameCache = new Map<number, string>();
+
+function makeChemicalName(value: number, target: number): string {
+  if (value === target) return 'V-JOLT';
+  if (value === 1) return 'Water';
+
+  if (value === 3) return 'UMB No.3';
+  if (value === 4) return 'NP-004';
+  if (value === 6) return 'Yellow-6';
+  if (value === 7) return 'UMB No.7';
+  if (value === 10) return 'UMB No.10';
+  if (value === 17) return 'VP-017';
+
+  const patterns: Array<(v: number) => string> = [
+    (v) => `UMB No.${v}`,
+    (v) => `NP-${String(v).padStart(3, '0')}`,
+    (v) => `Yellow-${v}`,
+    (v) => `VP-${String(v).padStart(3, '0')}`,
+  ];
+
+  return patterns[Math.floor(Math.random() * patterns.length)](value);
+}
 
 function getNameForValue(value: number, target: number): string {
-  if (value === target) return 'V-JOLT';
-  if (value >= 15) return `VP-${value}`;
-  if (value >= 10) return `UMB No.${value}`;
-  if (value >= 7) return `UMB No.${value}`;
-  if (value >= 4) return `NP-00${value}`;
-  return `Cmpd #${value}`;
+  const cached = nameCache.get(value);
+  if (cached) return cached;
+  const name = makeChemicalName(value, target);
+  nameCache.set(value, name);
+  return name;
 }
 
 function getColorClass(value: number, target: number): string {
@@ -51,36 +74,109 @@ function randomInt(min: number, max: number): number {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
+function pairKey(a: number, b: number): string {
+  const [low, high] = a < b ? [a, b] : [b, a];
+  return `${low},${high}`;
+}
+
+const TEMPLATES: Array<(w: number, r: number, y: number) => [Equation[], number[]]> = [
+  // A: Water + Yellow first
+  (w, r, y) => {
+    const d = w + y;
+    const e = r + y;
+    const f = d + e;
+    const g = f + y;
+    const target = g + r;
+    return [
+      [
+        { leftA: w, leftB: y, result: d },
+        { leftA: r, leftB: y, result: e },
+        { leftA: d, leftB: e, result: f },
+        { leftA: f, leftB: y, result: g },
+        { leftA: g, leftB: r, result: target },
+      ],
+      [d, e, f, g, target],
+    ];
+  },
+  // B: Water + Red first
+  (w, r, y) => {
+    const d = w + r;
+    const e = d + y;
+    const f = r + y;
+    const g = e + f;
+    const target = g + w;
+    return [
+      [
+        { leftA: w, leftB: r, result: d },
+        { leftA: d, leftB: y, result: e },
+        { leftA: r, leftB: y, result: f },
+        { leftA: e, leftB: f, result: g },
+        { leftA: g, leftB: w, result: target },
+      ],
+      [d, e, f, g, target],
+    ];
+  },
+  // C: Red + Yellow first
+  (w, r, y) => {
+    const d = r + y;
+    const e = w + d;
+    const f = e + y;
+    const g = f + r;
+    const target = g + w;
+    return [
+      [
+        { leftA: r, leftB: y, result: d },
+        { leftA: w, leftB: d, result: e },
+        { leftA: e, leftB: y, result: f },
+        { leftA: f, leftB: r, result: g },
+        { leftA: g, leftB: w, result: target },
+      ],
+      [d, e, f, g, target],
+    ];
+  },
+];
+
 function generatePuzzle(): PuzzleConfig {
-  const w = randomInt(1, 3);
-  const r = randomInt(2, 5);
-  const y = randomInt(3, 7);
+  const w = 1;
+  const r = randomInt(2, 4);
+  const yMin = Math.max(r + 1, 4);
+  const y = randomInt(yMin, 7);
+
+  const templateIdx = Math.floor(Math.random() * TEMPLATES.length);
+  const [equations, results] = TEMPLATES[templateIdx](w, r, y);
+  const target = results[results.length - 1];
+
+  // Validate: no equation result equals a base compound value
+  const baseVals = [w, r, y];
+  for (const v of results) {
+    if (baseVals.includes(v)) {
+      nameCache.clear();
+      return generatePuzzle(); // retry
+    }
+  }
+
+  // Pre-populate name cache so all values get consistent names
+  for (const v of [w, r, y, ...results]) {
+    getNameForValue(v, target);
+  }
 
   const bases: [BaseChem, BaseChem, BaseChem] = [
     { name: 'Water', value: w, colorClass: 'vjolt-blue', label: 'Water' },
-    { name: 'UMB No.3', value: r, colorClass: 'vjolt-red', label: 'UMB #3' },
-    { name: 'Yellow-6', value: y, colorClass: 'vjolt-yellow', label: 'Yel-6' },
+    { name: nameCache.get(r)!, value: r, colorClass: 'vjolt-red', label: nameCache.get(r)! },
+    { name: nameCache.get(y)!, value: y, colorClass: 'vjolt-yellow', label: nameCache.get(y)! },
   ];
 
-  const d = w + r;
-  const e = d + y;
-  const f = w + y;
-  const g = e + f;
-  const target = g + r;
+  const pairSet = new Set<string>();
+  for (const eq of equations) {
+    pairSet.add(pairKey(eq.leftA, eq.leftB));
+  }
+  const validPairs = Array.from(pairSet);
 
-  const equations: Equation[] = [
-    { leftA: w, leftB: r, result: d },
-    { leftA: d, leftB: y, result: e },
-    { leftA: w, leftB: y, result: f },
-    { leftA: e, leftB: f, result: g },
-    { leftA: g, leftB: r, result: target },
-  ];
-
-  return { bases, equations, target };
+  return { bases, equations, target, validPairs };
 }
 
 function optimalMoves(): number {
-  return 12;
+  return 11;
 }
 
 // ─── Module State ────────────────────────────────────────────────────
@@ -90,21 +186,21 @@ let ctx: PuzzleContext | null = null;
 let config: PuzzleConfig | null = null;
 let slots: (Bottle | null)[] = [];
 let nextId = 1;
-let selectedIdx: number | null = null;
+let selectedIdxs: number[] = [];
 let moves = 0;
 let won = false;
 const playingRef = { value: false };
 let bottleEls: HTMLElement[] = [];
-let testBtn: HTMLButtonElement | null = null;
+let combineBtn: HTMLButtonElement | null = null;
 let discardBtn: HTMLButtonElement | null = null;
 
 // ─── Rendering ───────────────────────────────────────────────────────
 
 function updateButtons(): void {
-  if (!testBtn || !discardBtn) return;
-  const hasSelected = selectedIdx !== null && slots[selectedIdx] !== null;
-  testBtn.disabled = !hasSelected;
-  discardBtn.disabled = !hasSelected;
+  if (!combineBtn || !discardBtn) return;
+  const nonEmptySelected = selectedIdxs.filter((i) => slots[i] !== null);
+  combineBtn.disabled = nonEmptySelected.length !== 2;
+  discardBtn.disabled = nonEmptySelected.length !== 1;
 }
 
 function render(): void {
@@ -114,11 +210,12 @@ function render(): void {
     const b = slots[i];
     if (b) {
       el.className = `vjolt-bottle ${b.colorClass}`;
-      if (selectedIdx === i) el.classList.add('selected');
+      if (selectedIdxs.includes(i)) el.classList.add('selected');
+      if (b.isPoison) el.classList.add('poison');
       const nameEl = el.querySelector('.vjolt-bottle-name') as HTMLElement;
       if (nameEl) nameEl.textContent = b.name;
       const valEl = el.querySelector('.vjolt-bottle-value') as HTMLElement;
-      if (valEl) valEl.textContent = `#${b.value}`;
+      if (valEl) valEl.textContent = b.isPoison ? '' : `#${b.value}`;
     } else {
       el.className = 'vjolt-bottle empty';
       const nameEl = el.querySelector('.vjolt-bottle-name') as HTMLElement;
@@ -221,12 +318,12 @@ function buildActions(): void {
   const actions = document.createElement('div');
   actions.className = 'vjolt-actions';
 
-  testBtn = document.createElement('button');
-  testBtn.className = 'vjolt-btn vjolt-btn-test';
-  testBtn.textContent = 'TEST';
-  testBtn.disabled = true;
-  testBtn.addEventListener('click', handleTest);
-  actions.appendChild(testBtn);
+  combineBtn = document.createElement('button');
+  combineBtn.className = 'vjolt-btn vjolt-btn-combine';
+  combineBtn.textContent = 'COMBINE';
+  combineBtn.disabled = true;
+  combineBtn.addEventListener('click', handleCombine);
+  actions.appendChild(combineBtn);
 
   discardBtn = document.createElement('button');
   discardBtn.className = 'vjolt-btn vjolt-btn-discard';
@@ -251,6 +348,7 @@ function handleFill(baseIdx: number): void {
     value: base.value,
     name: getNameForValue(base.value, config.target),
     colorClass: base.colorClass,
+    isPoison: false,
   };
   moves++;
   ctx?.playTone(0.3);
@@ -261,72 +359,84 @@ function handleBottleClick(idx: number): void {
   if (won || playingRef.value) return;
   if (idx >= slots.length || slots[idx] === null) return;
 
-  if (selectedIdx === idx) {
-    selectedIdx = null;
+  const pos = selectedIdxs.indexOf(idx);
+  if (pos >= 0) {
+    selectedIdxs.splice(pos, 1);
+  } else if (selectedIdxs.length < 2) {
+    selectedIdxs.push(idx);
+  }
+  render();
+}
+
+function handleCombine(): void {
+  if (won || playingRef.value || !config) return;
+  if (selectedIdxs.length !== 2) return;
+  const [a, b] = selectedIdxs;
+  const bottleA = slots[a];
+  const bottleB = slots[b];
+  if (!bottleA || !bottleB) return;
+
+  const anyPoison = bottleA.isPoison || bottleB.isPoison;
+  const sameValue = bottleA.value === bottleB.value;
+  const pair = pairKey(bottleA.value, bottleB.value);
+  const isValid = !anyPoison && config.validPairs.includes(pair);
+
+  selectedIdxs = [];
+
+  // Same base value + not a valid equation pair → collapse into one
+  if (sameValue && !isValid && !anyPoison) {
+    slots[b] = null;
+    moves++;
+    ctx?.playTone(0.2);
     render();
     return;
   }
 
-  if (selectedIdx !== null) {
-    const a = selectedIdx;
-    const b = idx;
-    const bottleA = slots[a];
-    const bottleB = slots[b];
-    if (!bottleA || !bottleB) return;
+  slots[a] = null;
+  slots[b] = null;
 
-    selectedIdx = null;
+  if (isValid) {
     const newValue = bottleA.value + bottleB.value;
-
-    slots[a] = null;
-    slots[b] = null;
     const emptyIdx = slots.indexOf(null);
     slots[emptyIdx] = {
       id: nextId++,
       value: newValue,
-      name: getNameForValue(newValue, config!.target),
-      colorClass: getColorClass(newValue, config!.target),
+      name: getNameForValue(newValue, config.target),
+      colorClass: getColorClass(newValue, config.target),
+      isPoison: false,
     };
-
     moves++;
     ctx?.playTone(0.5);
 
-    if (newValue === config?.target) {
+    if (newValue === config.target) {
+      render();
       won = true;
       triggerWin();
       return;
     }
-
-    render();
   } else {
-    selectedIdx = idx;
-    render();
-  }
-}
-
-function handleTest(): void {
-  if (won || playingRef.value || selectedIdx === null) return;
-  const b = slots[selectedIdx];
-  if (!b || !config) return;
-
-  if (b.value === config.target) {
-    won = true;
-    triggerWin();
-  } else {
+    const emptyIdx = slots.indexOf(null);
+    slots[emptyIdx] = {
+      id: nextId++,
+      value: 0,
+      name: '☠ POISON',
+      colorClass: 'vjolt-poison',
+      isPoison: true,
+    };
+    moves++;
     ctx?.playTone(0.1);
-    const el = bottleEls[selectedIdx];
-    if (el) {
-      el.classList.add('wrong');
-      setTimeout(() => el.classList.remove('wrong'), 400);
-    }
   }
+
+  render();
 }
 
 function handleDiscard(): void {
-  if (won || playingRef.value || selectedIdx === null) return;
-  if (slots[selectedIdx] === null) return;
+  if (won || playingRef.value) return;
+  const idx = selectedIdxs.find((i) => slots[i] !== null);
+  if (idx === undefined) return;
 
-  slots[selectedIdx] = null;
-  selectedIdx = null;
+  slots[idx] = null;
+  selectedIdxs = selectedIdxs.filter((i) => i !== idx);
   moves++;
   ctx?.playTone(0.15);
   render();
@@ -339,14 +449,15 @@ async function triggerWin(): Promise<void> {
   playingRef.value = true;
   ctx.setActions([]);
 
-  const targetIdx = slots.findIndex((s) => s?.value === config!.target);
+  const targetIdx = slots.findIndex((s) => s?.value === config!.target && !s.isPoison);
   if (targetIdx >= 0) {
     const el = bottleEls[targetIdx];
     if (el) el.classList.add('win');
   }
 
+  await sleep(1000);
   ctx.playChime();
-  await sleep(600);
+  await sleep(400);
 
   await completePuzzle(ctx, playingRef, async () => {}, newPuzzle, restartPuzzle, false);
 }
@@ -356,7 +467,7 @@ async function triggerWin(): Promise<void> {
 function restartPuzzle(): void {
   slots = [null, null, null, null];
   nextId = 1;
-  selectedIdx = null;
+  selectedIdxs = [];
   moves = 0;
   won = false;
   render();
@@ -364,7 +475,25 @@ function restartPuzzle(): void {
 
 function newPuzzle(): void {
   config = generatePuzzle();
-  restartPuzzle();
+  nameCache.clear();
+
+  slots = [null, null, null, null];
+  nextId = 1;
+  selectedIdxs = [];
+  moves = 0;
+  won = false;
+  bottleEls = [];
+  combineBtn = null;
+  discardBtn = null;
+
+  container!.innerHTML = '';
+  buildWall();
+  buildShelf();
+  buildWorkbench();
+  buildActions();
+  render();
+
+  ctx?.setActions(makeActions(playingRef, newPuzzle, restartPuzzle));
 }
 
 // ─── Thumbnail ───────────────────────────────────────────────────────
@@ -398,11 +527,11 @@ export const vjolt: PuzzleModule = {
     config = generatePuzzle();
     slots = [null, null, null, null];
     nextId = 1;
-    selectedIdx = null;
+    selectedIdxs = [];
     moves = 0;
     won = false;
     bottleEls = [];
-    testBtn = null;
+    combineBtn = null;
     discardBtn = null;
 
     buildWall();
@@ -417,7 +546,7 @@ export const vjolt: PuzzleModule = {
       destroy(): void {
         slots = [];
         bottleEls = [];
-        testBtn = null;
+        combineBtn = null;
         discardBtn = null;
         container!.innerHTML = '';
         container = null;
@@ -430,5 +559,5 @@ export const vjolt: PuzzleModule = {
 };
 
 // Exports for testing
-export { generatePuzzle, optimalMoves, SLOTS, getNameForValue, getColorClass };
+export { generatePuzzle, optimalMoves, SLOTS, getNameForValue, getColorClass, pairKey };
 export type { Bottle, PuzzleConfig, Equation, BaseChem };

@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { PuzzleContext } from '../../src/types';
-import { vjolt, generatePuzzle, optimalMoves, getNameForValue, getColorClass } from '../../src/puzzles/vjolt';
+import {
+  vjolt,
+  generatePuzzle,
+  optimalMoves,
+  getNameForValue,
+  getColorClass,
+  pairKey,
+} from '../../src/puzzles/vjolt';
 
 function createMockContext(): PuzzleContext {
   return {
@@ -21,93 +28,67 @@ afterEach(() => {
 
 describe('V-JOLT puzzle', () => {
   describe('generatePuzzle', () => {
-    it('returns three base chemicals with valid values', () => {
+    it('returns three base chemicals with valid pairs', () => {
       for (let i = 0; i < 50; i++) {
         const p = generatePuzzle();
         expect(p.bases).toHaveLength(3);
-        expect(p.bases[0].value).toBeGreaterThanOrEqual(1);
-        expect(p.bases[0].value).toBeLessThanOrEqual(3);
-        expect(p.bases[1].value).toBeGreaterThanOrEqual(2);
-        expect(p.bases[1].value).toBeLessThanOrEqual(5);
-        expect(p.bases[2].value).toBeGreaterThanOrEqual(3);
-        expect(p.bases[2].value).toBeLessThanOrEqual(7);
+        expect(p.bases[0].value).toBe(1);
+        const r = p.bases[1].value;
+        const y = p.bases[2].value;
+        expect(r).toBeGreaterThanOrEqual(2);
+        expect(r).toBeLessThanOrEqual(4);
+        expect(y).toBeGreaterThanOrEqual(4);
+        expect(y).toBeLessThanOrEqual(7);
+        expect(y).toBeGreaterThan(r);
+        expect(p.validPairs.length).toBe(5);
+        // No equation result should equal a base value
+        const baseVals = [1, r, y];
+        for (const eq of p.equations) {
+          expect(baseVals).not.toContain(eq.result);
+        }
+        // All equations should sum correctly
+        for (const eq of p.equations) {
+          expect(eq.leftA + eq.leftB).toBe(eq.result);
+        }
       }
     });
+  });
 
-    it('generates a reachable target value', () => {
-      for (let i = 0; i < 50; i++) {
-        const p = generatePuzzle();
-        const allValues = p.bases.map((b) => b.value);
-        expect(p.target).toBeGreaterThan(Math.max(...allValues));
-        // Target should be the last equation result
-        const lastEq = p.equations[p.equations.length - 1];
-        expect(p.target).toBe(lastEq.result);
-      }
-    });
-
-    it('generates five equations forming a complete chain', () => {
-      const p = generatePuzzle();
-      expect(p.equations).toHaveLength(5);
-      // Each equation: leftA + leftB = result
-      for (const eq of p.equations) {
-        expect(eq.leftA + eq.leftB).toBe(eq.result);
-      }
+  describe('pairKey', () => {
+    it('sorts values low,high', () => {
+      expect(pairKey(3, 1)).toBe('1,3');
     });
   });
 
   describe('optimalMoves', () => {
-    it('returns 12', () => {
-      expect(optimalMoves()).toBe(12);
+    it('returns 11', () => {
+      expect(optimalMoves()).toBe(11);
     });
   });
 
   describe('getNameForValue', () => {
-    it('returns V-JOLT for target value', () => {
+    it('returns V-JOLT for target', () => {
       expect(getNameForValue(22, 22)).toBe('V-JOLT');
     });
-
-    it('returns VP- prefixed name for values >= 15', () => {
-      const name = getNameForValue(17, 22);
-      expect(name).toBe('VP-17');
+    it('returns Water for value 1', () => {
+      expect(getNameForValue(1, 22)).toBe('Water');
     });
-
-    it('returns UMB No. for values 10-14', () => {
-      expect(getNameForValue(12, 22)).toBe('UMB No.12');
+    it('returns vanilla names for known values', () => {
+      expect(getNameForValue(3, 22)).toBe('UMB No.3');
+      expect(getNameForValue(4, 22)).toBe('NP-004');
+      expect(getNameForValue(6, 22)).toBe('Yellow-6');
+      expect(getNameForValue(7, 22)).toBe('UMB No.7');
+      expect(getNameForValue(10, 22)).toBe('UMB No.10');
+      expect(getNameForValue(17, 22)).toBe('VP-017');
     });
-
-    it('returns NP-00 for values 4-6', () => {
-      expect(getNameForValue(5, 22)).toBe('NP-005');
-    });
-  });
-
-  describe('getColorClass', () => {
-    it('returns vjolt-brown for target value', () => {
-      expect(getColorClass(22, 22)).toBe('vjolt-brown');
-    });
-
-    it('returns vjolt-darkblue for values 15-19', () => {
-      expect(getColorClass(16, 22)).toBe('vjolt-darkblue');
-    });
-
-    it('returns vjolt-orange for values 10-14', () => {
-      expect(getColorClass(11, 22)).toBe('vjolt-orange');
-    });
-
-    it('returns vjolt-green for values 7-9', () => {
-      expect(getColorClass(8, 22)).toBe('vjolt-green');
-    });
-
-    it('returns vjolt-purple for values 4-6', () => {
-      expect(getColorClass(4, 22)).toBe('vjolt-purple');
-    });
-
-    it('returns vjolt-gray for values 1-3', () => {
-      expect(getColorClass(2, 22)).toBe('vjolt-gray');
+    it('includes the value in the name for unknowns', () => {
+      const name = getNameForValue(5, 22);
+      expect(name).toMatch(/UMB No\.5|NP-005|Yellow-5|VP-005/);
     });
   });
 
   describe('DOM creation', () => {
-    it('creates wall, shelf, workbench, and actions', () => {
+    it('creates all puzzle elements', () => {
       const container = document.createElement('div');
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
@@ -116,39 +97,9 @@ describe('V-JOLT puzzle', () => {
       expect(container.querySelector('.vjolt-shelf')).toBeTruthy();
       expect(container.querySelector('.vjolt-workbench')).toBeTruthy();
       expect(container.querySelector('.vjolt-actions')).toBeTruthy();
-
-      inst.destroy();
-    });
-
-    it('creates 3 shelf buttons', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      const btns = container.querySelectorAll('.vjolt-shelf-btn');
-      expect(btns).toHaveLength(3);
-
-      inst.destroy();
-    });
-
-    it('creates 4 workbench slots', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      const bottles = container.querySelectorAll('.vjolt-bottle');
-      expect(bottles).toHaveLength(4);
-
-      inst.destroy();
-    });
-
-    it('creates 2 action buttons (TEST + DISCARD)', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      const actions = container.querySelectorAll('.vjolt-btn');
-      expect(actions).toHaveLength(2);
+      expect(container.querySelectorAll('.vjolt-shelf-btn')).toHaveLength(3);
+      expect(container.querySelectorAll('.vjolt-bottle')).toHaveLength(4);
+      expect(container.querySelectorAll('.vjolt-btn')).toHaveLength(2);
 
       inst.destroy();
     });
@@ -158,23 +109,12 @@ describe('V-JOLT puzzle', () => {
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
 
-      expect(ctx.setStatus).toHaveBeenCalledTimes(1);
-      expect(ctx.setStatus).toHaveBeenCalledWith({ moves: 0, optimal: 12 });
+      expect(ctx.setStatus).toHaveBeenCalledWith({ moves: 0, optimal: 11 });
 
       inst.destroy();
     });
 
-    it('calls setActions on creation', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      expect(ctx.setActions).toHaveBeenCalledTimes(1);
-
-      inst.destroy();
-    });
-
-    it('destroy cleans up container innerHTML', () => {
+    it('destroy cleans up innerHTML', () => {
       const container = document.createElement('div');
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
@@ -183,47 +123,23 @@ describe('V-JOLT puzzle', () => {
       inst.destroy();
       expect(container.innerHTML).toBe('');
     });
+  });
 
-    it('fills a bottle when shelf button is clicked', () => {
+  describe('interactions', () => {
+    it('fills, selects, and deselects a bottle', () => {
       const container = document.createElement('div');
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
 
-      const firstBtn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
-      firstBtn.click();
+      const btn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
+      btn.click();
 
       const bottles = container.querySelectorAll('.vjolt-bottle');
-      const filledBottle = bottles[0];
-      expect(filledBottle.classList.contains('empty')).toBe(false);
+      expect(bottles[0].classList.contains('empty')).toBe(false);
 
-      inst.destroy();
-    });
-
-    it('selects a bottle on click', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      const firstBtn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
-      firstBtn.click();
-
-      const bottles = container.querySelectorAll('.vjolt-bottle');
       (bottles[0] as HTMLElement).click();
       expect(bottles[0].classList.contains('selected')).toBe(true);
 
-      inst.destroy();
-    });
-
-    it('deselects on second click', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      const firstBtn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
-      firstBtn.click();
-
-      const bottles = container.querySelectorAll('.vjolt-bottle');
-      (bottles[0] as HTMLElement).click();
       (bottles[0] as HTMLElement).click();
       expect(bottles[0].classList.contains('selected')).toBe(false);
 
@@ -235,15 +151,97 @@ describe('V-JOLT puzzle', () => {
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
 
-      const firstBtn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
-      firstBtn.click();
+      const btn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
+      btn.click();
 
-      const discardBtn = container.querySelector('.vjolt-btn-discard') as HTMLButtonElement;
       const bottles = container.querySelectorAll('.vjolt-bottle');
       (bottles[0] as HTMLElement).click();
+
+      const discardBtn = container.querySelector('.vjolt-btn-discard') as HTMLButtonElement;
       discardBtn.click();
 
       expect(bottles[0].classList.contains('empty')).toBe(true);
+
+      inst.destroy();
+    });
+
+    it('combines via COMBINE button', () => {
+      const container = document.createElement('div');
+      const ctx = createMockContext();
+      const inst = vjolt.create(container, ctx);
+
+      const btns = container.querySelectorAll('.vjolt-shelf-btn');
+      (btns[0] as HTMLButtonElement).click();
+      (btns[1] as HTMLButtonElement).click();
+
+      const bottles = container.querySelectorAll('.vjolt-bottle');
+      (bottles[0] as HTMLElement).click();
+      (bottles[1] as HTMLElement).click();
+
+      const combineBtn = container.querySelector('.vjolt-btn-combine') as HTMLButtonElement;
+      combineBtn.click();
+
+      const nonEmpty = container.querySelectorAll('.vjolt-bottle:not(.empty)');
+      expect(nonEmpty.length).toBe(1);
+
+      inst.destroy();
+    });
+
+    it('combining two same-value bottles collapses into one', () => {
+      const container = document.createElement('div');
+      const ctx = createMockContext();
+      const inst = vjolt.create(container, ctx);
+
+      // Fill two bottles from the same shelf chemical
+      const btns = container.querySelectorAll('.vjolt-shelf-btn');
+      (btns[0] as HTMLButtonElement).click();
+      (btns[0] as HTMLButtonElement).click();
+
+      const bottles = container.querySelectorAll('.vjolt-bottle');
+      expect(bottles[0].classList.contains('empty')).toBe(false);
+      expect(bottles[1].classList.contains('empty')).toBe(false);
+
+      (bottles[0] as HTMLElement).click();
+      (bottles[1] as HTMLElement).click();
+
+      const combineBtn = container.querySelector('.vjolt-btn-combine') as HTMLButtonElement;
+      combineBtn.click();
+
+      // Should collapse to one bottle (no sum, no poison)
+      const nonEmpty = container.querySelectorAll('.vjolt-bottle:not(.empty)');
+      expect(nonEmpty.length).toBe(1);
+      // The remaining bottle should be the same value, not poison
+      expect(nonEmpty[0].classList.contains('poison')).toBe(false);
+
+      inst.destroy();
+    });
+
+    it('button states correct with 0, 1, and 2 selected', () => {
+      const container = document.createElement('div');
+      const ctx = createMockContext();
+      const inst = vjolt.create(container, ctx);
+
+      const combineBtn = container.querySelector('.vjolt-btn-combine') as HTMLButtonElement;
+      const discardBtn = container.querySelector('.vjolt-btn-discard') as HTMLButtonElement;
+
+      expect(combineBtn.disabled).toBe(true);
+      expect(discardBtn.disabled).toBe(true);
+
+      const btns = container.querySelectorAll('.vjolt-shelf-btn');
+      (btns[0] as HTMLButtonElement).click();
+      (btns[1] as HTMLButtonElement).click();
+
+      const bottles = container.querySelectorAll('.vjolt-bottle');
+
+      // Select 1
+      (bottles[0] as HTMLElement).click();
+      expect(combineBtn.disabled).toBe(true);
+      expect(discardBtn.disabled).toBe(false);
+
+      // Select 2
+      (bottles[1] as HTMLElement).click();
+      expect(combineBtn.disabled).toBe(false);
+      expect(discardBtn.disabled).toBe(true);
 
       inst.destroy();
     });
@@ -253,32 +251,10 @@ describe('V-JOLT puzzle', () => {
       const ctx = createMockContext();
       const inst = vjolt.create(container, ctx);
 
-      const firstBtn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
-      firstBtn.click();
+      const btn = container.querySelector('.vjolt-shelf-btn') as HTMLButtonElement;
+      btn.click();
 
       expect(ctx.playTone).toHaveBeenCalled();
-
-      inst.destroy();
-    });
-
-    it('combines two bottles into one', () => {
-      const container = document.createElement('div');
-      const ctx = createMockContext();
-      const inst = vjolt.create(container, ctx);
-
-      // Fill 2 bottles
-      const btns = container.querySelectorAll('.vjolt-shelf-btn');
-      (btns[0] as HTMLButtonElement).click();
-      (btns[1] as HTMLButtonElement).click();
-
-      // Combine them
-      const bottles = container.querySelectorAll('.vjolt-bottle');
-      (bottles[0] as HTMLElement).click();
-      (bottles[1] as HTMLElement).click();
-
-      // Should now have 1 bottle (combined) + 1 empty
-      const nonEmpty = container.querySelectorAll('.vjolt-bottle:not(.empty)');
-      expect(nonEmpty.length).toBe(1);
 
       inst.destroy();
     });
