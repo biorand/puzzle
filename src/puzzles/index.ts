@@ -7,9 +7,11 @@ import { portableSafe } from './portableSafe';
 import { powerPanel } from './powerPanel';
 import { slidingBlock } from './slidingBlock';
 import { stagla } from './stagla';
+import { vjolt } from './vjolt';
 
 export const puzzles = new Map<string, PuzzleModule>([
     [keypad.id, keypad],
+    [vjolt.id, vjolt],
     [portableSafe.id, portableSafe],
     [powerPanel.id, powerPanel],
     [stagla.id, stagla],
@@ -21,6 +23,7 @@ export const puzzles = new Map<string, PuzzleModule>([
 
 export const puzzleOrder = [
     'keypad',
+    'vjolt',
     'portableSafe',
     'powerPanel',
     'stagla',

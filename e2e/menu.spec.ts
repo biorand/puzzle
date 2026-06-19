@@ -70,11 +70,11 @@ test.describe('Puzzle Menu Grid', () => {
         await page.reload();
         await page.waitForSelector('#menu-grid');
 
-        // Portable Safe (2nd card) should now be unlocked
+        // V-JOLT (2nd card) should now be unlocked
         const secondCard = page.locator('.menu-card').nth(1);
         await expect(secondCard).not.toHaveClass(/locked/);
         await expect(secondCard).toBeEnabled();
-        await expect(secondCard.locator('.menu-card-name')).toHaveText('Portable Safe');
+        await expect(secondCard.locator('.menu-card-name')).toHaveText('V-JOLT');
     });
 
     test('card hover effect lifts the card', async ({ page }) => {

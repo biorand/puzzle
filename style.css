@@ -2148,3 +2148,319 @@ settings-page {
         opacity: 0;
     }
 }
+
+/* ── V-JOLT ── */
+
+.vjolt-wall {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 6px 10px;
+  max-width: 360px;
+  width: calc(100% - 20px);
+  flex-shrink: 0;
+}
+
+.vjolt-equations {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+}
+
+.vjolt-equation {
+  font-family: 'Cutive Mono', monospace;
+  font-size: 15px;
+  color: #ddd;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.vjolt-hr {
+  border: none;
+  border-top: 1px dashed #555;
+  margin: 8px 0 6px;
+}
+
+.vjolt-legend {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.vjolt-legend-entry {
+  font-family: 'Cutive Mono', monospace;
+  font-size: 13px;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.vjolt-shelf {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.vjolt-shelf-btn {
+  width: 72px;
+  height: 72px;
+  border: 2px solid #555;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cutive Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  transition:
+    transform 0.12s,
+    filter 0.12s;
+  touch-action: manipulation;
+  position: relative;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.vjolt-shelf-btn:active {
+  transform: scale(0.9);
+  filter: brightness(1.4);
+}
+
+.vjolt-shelf-btn.vjolt-blue {
+  background: linear-gradient(135deg, #2266cc, #4488ff);
+  border-color: #4488ff;
+}
+.vjolt-shelf-btn.vjolt-red {
+  background: linear-gradient(135deg, #aa2222, #ff4444);
+  border-color: #ff4444;
+}
+.vjolt-shelf-btn.vjolt-yellow {
+  background: linear-gradient(135deg, #cc9900, #ffcc00);
+  border-color: #ffcc00;
+}
+
+.vjolt-workbench {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 8px 10px;
+  max-width: 360px;
+  width: calc(100% - 20px);
+  flex: 1;
+  min-height: 0;
+  align-content: center;
+}
+
+.vjolt-bottle {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-width: 72px;
+  max-height: 96px;
+  border: 2px solid #555;
+  border-radius: 4px 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
+  touch-action: manipulation;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.vjolt-bottle.empty {
+  border-color: #333;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: default;
+}
+
+.vjolt-bottle:not(.empty):active {
+  transform: scale(0.92);
+}
+
+.vjolt-bottle.selected {
+  border-color: #ff6600;
+  box-shadow: 0 0 8px rgba(255, 102, 0, 0.5);
+  transform: translateY(-4px);
+}
+
+.vjolt-bottle-fill {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  border-radius: 0 0 6px 6px;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+  height: 100%;
+}
+
+.vjolt-bottle.vjolt-blue .vjolt-bottle-fill {
+  background: linear-gradient(to top, #2266cc, #4488ff);
+}
+.vjolt-bottle.vjolt-red .vjolt-bottle-fill {
+  background: linear-gradient(to top, #aa2222, #ff4444);
+}
+.vjolt-bottle.vjolt-yellow .vjolt-bottle-fill {
+  background: linear-gradient(to top, #cc9900, #ffcc00);
+}
+.vjolt-bottle.vjolt-purple .vjolt-bottle-fill {
+  background: linear-gradient(to top, #7722aa, #aa44ff);
+}
+.vjolt-bottle.vjolt-green .vjolt-bottle-fill {
+  background: linear-gradient(to top, #228822, #44cc44);
+}
+.vjolt-bottle.vjolt-orange .vjolt-bottle-fill {
+  background: linear-gradient(to top, #cc6600, #ff8800);
+}
+.vjolt-bottle.vjolt-darkblue .vjolt-bottle-fill {
+  background: linear-gradient(to top, #224488, #4466cc);
+}
+.vjolt-bottle.vjolt-brown .vjolt-bottle-fill {
+  background: linear-gradient(to top, #664422, #885522);
+}
+.vjolt-bottle.vjolt-gray .vjolt-bottle-fill {
+  background: linear-gradient(to top, #444, #777);
+}
+.vjolt-bottle.wrong .vjolt-bottle-fill {
+  background: #600 !important;
+}
+
+.vjolt-bottle-name {
+  position: relative;
+  z-index: 1;
+  font-family: 'Cutive Mono', monospace;
+  font-size: 8px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  padding: 0 2px;
+  line-height: 1.2;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 1px;
+}
+
+.vjolt-bottle-value {
+  position: relative;
+  z-index: 1;
+  font-family: 'Cutive Mono', monospace;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  padding: 0 2px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.vjolt-bottle.win {
+  border-color: #ff6600;
+  box-shadow:
+    0 0 12px rgba(255, 102, 0, 0.6),
+    0 0 24px rgba(255, 102, 0, 0.3);
+  animation: vjolt-glow 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes vjolt-glow {
+  from {
+    box-shadow: 0 0 8px rgba(255, 102, 0, 0.4);
+  }
+  to {
+    box-shadow:
+      0 0 16px rgba(255, 102, 0, 0.7),
+      0 0 32px rgba(255, 102, 0, 0.3);
+  }
+}
+
+.vjolt-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 6px 0 10px;
+  flex-shrink: 0;
+}
+
+.vjolt-btn {
+  width: 90px;
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Cutive Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.1s,
+    filter 0.1s,
+    opacity 0.15s;
+  touch-action: manipulation;
+}
+
+.vjolt-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.vjolt-btn:not(:disabled):active {
+  transform: scale(0.94);
+  filter: brightness(1.2);
+}
+
+.vjolt-btn-discard {
+  background: #555;
+  color: #ddd;
+  box-shadow: 0 3px 0 #333;
+}
+
+.vjolt-btn-combine {
+  background: #4488ff;
+  color: #fff;
+  box-shadow: 0 3px 0 #2266cc;
+}
+
+.vjolt-btn-combine:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+.vjolt-bottle.poison {
+  border-color: #660;
+  animation: vjolt-toxic 2s ease-in-out infinite;
+}
+
+.vjolt-bottle.poison .vjolt-bottle-fill {
+  background: linear-gradient(to top, #3a3a00, #5a5a00);
+}
+
+.vjolt-bottle.poison .vjolt-bottle-name {
+  color: #cc0;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+@keyframes vjolt-toxic {
+  0%,
+  100% {
+    box-shadow: 0 0 2px rgba(150, 150, 0, 0.3);
+  }
+  25% {
+    box-shadow: 0 0 6px rgba(200, 200, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 2px rgba(150, 150, 0, 0.3);
+  }
+  75% {
+    box-shadow: 0 0 8px rgba(200, 200, 0, 0.6);
+  }
+}
