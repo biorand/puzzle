@@ -1,7 +1,7 @@
 import { html, LitElement } from 'lit';
 import { state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { initAudioOnFirstClick, playChime, playTone, playMelody as pMelody } from '../audio';
+import { initAudioOnFirstClick, playMelody as pMelody } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
 import '../puzzles/puzzle-graveyard';
 import '../puzzles/puzzle-keypad';
@@ -13,13 +13,12 @@ import '../puzzles/puzzle-sliding-block';
 import '../puzzles/puzzle-stagla';
 import '../puzzles/puzzle-vjolt';
 import { sleep } from '../puzzles/shared';
-import type { ActionButton, MenuEntry, PuzzleContext, PuzzleModule, StatusInfo } from '../types';
+import type { ActionButton, MenuEntry, PuzzleModule, StatusInfo } from '../types';
 import { PUZZLE_REGENERATE } from '../types';
 import './app-footer';
 import './app-header';
 import './complete-overlay';
 import './melody-composer';
-import './puzzle-host';
 import './puzzle-menu';
 import './settings-page';
 import './status-bar';
@@ -28,7 +27,6 @@ type Page = 'menu' | 'puzzle' | 'melody' | 'settings';
 
 export class RepuzzlesApp extends LitElement {
     @state() private _page: Page = 'menu';
-    @state() private _puzzleModule: PuzzleModule | null = null;
     @state() private _puzzleName = '';
     @state() private _moves = 0;
     @state() private _optimal = 0;
@@ -42,19 +40,6 @@ export class RepuzzlesApp extends LitElement {
     @state() private _activePuzzleId: string | null = null;
     @state() private _activeTutorialStep: number | undefined;
     @state() private _activeForceDifficulty: number | undefined;
-
-    private _context: PuzzleContext | null = null;
-    private _convertedIds = new Set([
-        'keypad',
-        'slidingBlock',
-        'stagla',
-        'graveyard',
-        'labPuzzle',
-        'plant43',
-        'portableSafe',
-        'powerPanel',
-        'vjolt',
-    ]);
 
     createRenderRoot() {
         return this;
@@ -202,143 +187,16 @@ export class RepuzzlesApp extends LitElement {
         this._overlayNextName = null;
         this._buttons = [];
 
-        if (this._convertedIds.has(mod.id)) {
-            // ── Lit puzzle component path ──
-            this._activeTutorialStep = undefined;
-            this._activeForceDifficulty = undefined;
-            if (mod.id === 'keypad') {
-                const step = this._getKeypadTutorial();
-                if (step < 5) {
-                    this._activeTutorialStep = step;
-                    this._activeForceDifficulty = [1, 1, 2, 2, 3][step];
-                }
+        this._activeTutorialStep = undefined;
+        this._activeForceDifficulty = undefined;
+        if (mod.id === 'keypad') {
+            const step = this._getKeypadTutorial();
+            if (step < 5) {
+                this._activeTutorialStep = step;
+                this._activeForceDifficulty = [1, 1, 2, 2, 3][step];
             }
-            this._puzzleModule = null;
-            this._context = null;
-            this._puzzleKey++;
-        } else {
-            // ── Legacy PuzzleHost path (unconverted puzzles) ──
-            const self = this; // eslint-disable-line @typescript-eslint/no-this-alias
-
-            let tutorialStep: number | undefined;
-            let forceDifficulty: number | undefined;
-            if (mod.id === 'keypad') {
-                const step = this._getKeypadTutorial();
-                if (step < 5) {
-                    tutorialStep = step;
-                    forceDifficulty = [1, 1, 2, 2, 3][step];
-                }
-            }
-
-            const ctx: PuzzleContext & { forceDifficulty?: number; tutorialStep?: number } = {
-                setStatus(info: StatusInfo): void {
-                    self._moves = info.moves;
-                    if (info.optimal !== undefined) self._optimal = info.optimal;
-                },
-
-                setActions(buttons: ActionButton[]): void {
-                    self._buttons = [...buttons];
-                },
-
-                async showOverlay(nextMod?: PuzzleModule): Promise<void> {
-                    self._overlayMessage = 'COMPLETED';
-                    if (nextMod) {
-                        self._overlayNextName = nextMod.name;
-                        self._overlayOpen = true;
-                        pMelody('C4/4 E4/4 G4/4 C5/4');
-                        await new Promise((r) => setTimeout(r, 3000));
-                        self._overlayOpen = false;
-                        self._overlayNextName = null;
-                        location.hash = `#/${nextMod.sourceGame}/${nextMod.slug}`;
-                    } else {
-                        self._overlayNextName = null;
-                        self._overlayOpen = true;
-                        await new Promise((r) => setTimeout(r, 2000));
-                        self._overlayOpen = false;
-                    }
-                },
-
-                hideOverlay(): void {
-                    self._overlayOpen = false;
-                },
-
-                playTone,
-                playChime,
-                playMelody: pMelody,
-
-                forceDifficulty,
-                tutorialStep,
-                tutorialTotal: 5,
-
-                score: {
-                    get count(): number {
-                        return self._getScore(mod.id);
-                    },
-                    increment(): PuzzleModule | null {
-                        const idx = puzzleOrder.indexOf(mod.id);
-                        const nextId =
-                            idx >= 0 && idx < puzzleOrder.length - 1 ? puzzleOrder[idx + 1] : null;
-                        const wasNextUnlocked = nextId ? self._isUnlocked(nextId) : true;
-
-                        const n = self._getScore(mod.id) + 1;
-                        self._setScore(mod.id, n);
-                        self._score = n;
-
-                        if (mod.id === 'keypad') {
-                            const step = self._getKeypadTutorial();
-                            if (step < 5) {
-                                const newStep = step + 1;
-                                self._setKeypadTutorial(newStep);
-                                if (newStep < 5) {
-                                    ctx.forceDifficulty = [1, 1, 2, 2, 3][newStep];
-                                    ctx.tutorialStep = newStep;
-                                } else {
-                                    ctx.forceDifficulty = undefined;
-                                    ctx.tutorialStep = undefined;
-                                    if (self._getProgress() < 1) self._setProgress(1);
-                                }
-                            }
-                        } else {
-                            const newProgress = Math.max(self._getProgress(), idx + 1);
-                            self._setProgress(newProgress);
-                        }
-
-                        if (nextId) {
-                            const nowUnlocked = self._isUnlocked(nextId);
-                            if (!wasNextUnlocked && nowUnlocked) {
-                                return puzzles.get(nextId) || null;
-                            }
-                        }
-                        return null;
-                    },
-                },
-
-                onCheatUnlockAll: (playMelodyFn?: () => Promise<void>) => {
-                    self._setProgress(puzzleOrder.length - 1);
-                    if (playMelodyFn) {
-                        self._overlayNextName = 'ALL PUZZLES';
-                        self._overlayMessage = 'CHEAT ACTIVATED';
-                        self._overlayOpen = true;
-                        playMelodyFn().then(() => {
-                            setTimeout(() => {
-                                self._overlayOpen = false;
-                                self._overlayNextName = null;
-                                location.hash = '#/';
-                            }, 500);
-                        });
-                    } else {
-                        playChime();
-                        setTimeout(() => {
-                            location.hash = '#/';
-                        }, 2200);
-                    }
-                },
-            };
-
-            this._context = ctx;
-            this._puzzleKey++;
-            this._puzzleModule = mod;
         }
+        this._puzzleKey++;
     }
 
     // ── Lit Puzzle Event Handlers ──
@@ -511,8 +369,6 @@ export class RepuzzlesApp extends LitElement {
         }
 
         if (this._page === 'puzzle') {
-            const isLit =
-                this._activePuzzleId !== null && this._convertedIds.has(this._activePuzzleId);
             return html`
                 <app-header
                     title=${this._puzzleName}
@@ -521,15 +377,7 @@ export class RepuzzlesApp extends LitElement {
                     @back=${this._onBack}
                     @settings=${this._onSettings}
                 ></app-header>
-                ${keyed(
-                    this._puzzleKey,
-                    isLit
-                        ? this._renderLitPuzzle()
-                        : html`<puzzle-host
-                              .module=${this._puzzleModule}
-                              .context=${this._context}
-                          ></puzzle-host>`,
-                )}
+                ${keyed(this._puzzleKey, this._renderLitPuzzle())}
                 <status-bar
                     .moves=${this._moves}
                     .optimal=${this._optimal}
