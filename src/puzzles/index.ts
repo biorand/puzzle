@@ -141,6 +141,21 @@ const PLANT43_THUMB = `<svg viewBox="0 0 120 120" fill="none">
   <circle cx="96" cy="18" r="6" fill="#0a0"/>
 </svg>`;
 
+const LAB_CIRCUIT_THUMB = `<svg viewBox="0 0 120 120" fill="none">
+  <rect x="10" y="10" width="100" height="100" rx="4" stroke="#0a0" stroke-width="1.5" fill="none"/>
+  <rect x="24" y="24" width="72" height="72" rx="3" stroke="#0a0" stroke-width="1.5" fill="none"/>
+  <rect x="38" y="38" width="44" height="44" rx="2" stroke="#0a0" stroke-width="1.5" fill="none"/>
+  <line x1="60" y1="10" x2="60" y2="24" stroke="#0a0" stroke-width="2"/>
+  <line x1="60" y1="96" x2="60" y2="110" stroke="#0a0" stroke-width="2"/>
+  <line x1="10" y1="60" x2="24" y2="60" stroke="#0a0" stroke-width="2"/>
+  <line x1="96" y1="60" x2="110" y2="60" stroke="#0a0" stroke-width="2"/>
+  <text x="60" y="20" text-anchor="middle" fill="#0f0" font-size="7">⚡</text>
+  <text x="60" y="110" text-anchor="middle" fill="#0a0" font-size="7">⚡</text>
+  <text x="20" y="64" text-anchor="middle" fill="#0a0" font-size="7">⚡</text>
+  <text x="100" y="64" text-anchor="middle" fill="#0a0" font-size="7">⚡</text>
+  <text x="60" y="68" text-anchor="middle" fill="#0a0" font-size="8">⚡</text>
+</svg>`;
+
 const MODULES: Array<{
     id: string;
     slug: string;
@@ -192,6 +207,13 @@ const MODULES: Array<{
         sourceGame: 're2r',
         name: 'Plant 43',
         thumbnail: PLANT43_THUMB,
+    },
+    {
+        id: 'labCircuit',
+        slug: 'lab-circuit',
+        sourceGame: 're4r',
+        name: 'Lab Circuit',
+        thumbnail: LAB_CIRCUIT_THUMB,
     },
 ];
 

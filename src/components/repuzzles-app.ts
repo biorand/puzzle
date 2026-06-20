@@ -1,11 +1,12 @@
 import { LitElement, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
-import { html, unsafeStatic } from 'lit/static-html.js';
 import { keyed } from 'lit/directives/keyed.js';
+import { html, unsafeStatic } from 'lit/static-html.js';
 import { initAudioOnFirstClick, playMelody as pMelody } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
 import '../puzzles/puzzle-graveyard';
 import '../puzzles/puzzle-keypad';
+import '../puzzles/puzzle-lab-circuit';
 import '../puzzles/puzzle-lab-puzzle';
 import '../puzzles/puzzle-plant43';
 import '../puzzles/puzzle-portable-safe';
@@ -325,6 +326,7 @@ export class RepuzzlesApp extends LitElement {
         portableSafe: 'puzzle-portable-safe',
         powerPanel: 'puzzle-power-panel',
         vjolt: 'puzzle-vjolt',
+        labCircuit: 'puzzle-lab-circuit',
     };
 
     // ── Render ──

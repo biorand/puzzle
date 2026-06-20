@@ -14,14 +14,14 @@ test.describe('Puzzle Menu Grid', () => {
         await expect(page.locator('#menu h2')).toHaveText('Puzzle Collection');
     });
 
-    test('renders all 9 puzzle cards in the grid', async ({ page }) => {
+    test('renders all 10 puzzle cards in the grid', async ({ page }) => {
         const cards = page.locator('.menu-card');
-        await expect(cards).toHaveCount(9);
+        await expect(cards).toHaveCount(10);
     });
 
     test('each card displays an SVG thumbnail', async ({ page }) => {
         const thumbs = page.locator('.menu-card-thumb svg');
-        await expect(thumbs).toHaveCount(9);
+        await expect(thumbs).toHaveCount(10);
     });
 
     test('first puzzle (Keypad) is unlocked on fresh start', async ({ page }) => {
@@ -35,11 +35,11 @@ test.describe('Puzzle Menu Grid', () => {
         // All puzzles after keypad should be locked initially
         const lockedCards = page.locator('.menu-card.locked');
         const lockedCount = await lockedCards.count();
-        expect(lockedCount).toBe(8);
+        expect(lockedCount).toBe(9);
 
         // Each locked card should have a requirement label
         const requirements = page.locator('.menu-card-req');
-        await expect(requirements).toHaveCount(8);
+        await expect(requirements).toHaveCount(9);
 
         // Verify the first locked card shows the right requirement
         const firstLocked = lockedCards.first();
