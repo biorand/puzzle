@@ -100,7 +100,7 @@ function bfsAll(start?: Plant43State): Map<string, BfsEntry> {
 }
 
 function generateRandomStart(total: number): Plant43State {
-    for (; ;) {
+    for (;;) {
         const a = Math.floor(Math.random() * (Math.min(total, CAPACITIES[0]) + 1));
         const rem = total - a;
         if (rem > CAPACITIES[1] + CAPACITIES[2]) continue;
@@ -303,19 +303,19 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         const buttons: ActionButton[] = this._playing
             ? []
             : [
-                {
-                    label: 'New Puzzle',
-                    handler: () => {
-                        if (!this._playing) this._newPuzzle();
-                    },
-                },
-                {
-                    label: 'Reset',
-                    handler: () => {
-                        if (!this._playing) this._restartPuzzle();
-                    },
-                },
-            ];
+                  {
+                      label: 'New Puzzle',
+                      handler: () => {
+                          if (!this._playing) this._newPuzzle();
+                      },
+                  },
+                  {
+                      label: 'Reset',
+                      handler: () => {
+                          if (!this._playing) this._restartPuzzle();
+                      },
+                  },
+              ];
         this.dispatchEvent(
             new CustomEvent(PUZZLE_ACTIONS, {
                 detail: buttons,
@@ -336,7 +336,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
             </div>
             <div class="plant43-buttons">
                 ${(['green', 'red', 'blue'] as Action[]).map(
-            (action) => html`
+                    (action) => html`
                         <button
                             class="plant43-btn btn-${action}"
                             data-action=${action}
@@ -346,7 +346,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
                             <span class="material-symbols-outlined">${ICONS[action]}</span>
                         </button>
                     `,
-        )}
+                )}
             </div>`;
     }
 
@@ -377,15 +377,15 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
                 <div class="plant43-tube-fill" style=${styleMap({ height: `${pct}%` })}></div>
                 <div class="plant43-tube-markers">
                     ${Array.from({ length: cap - 1 }, (_, i) => i + 1).map(
-            (v) =>
-                html` <div
+                        (v) =>
+                            html` <div
                                 class="plant43-tube-marker"
                                 style=${styleMap({ bottom: `${(v / cap) * 100}%` })}
                             >
                                 <div class="plant43-tube-marker-line"></div>
                                 <span class="plant43-tube-marker-label">${v}</span>
                             </div>`,
-        )}
+                    )}
                 </div>
             </div>
         </div>`;
