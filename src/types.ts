@@ -65,3 +65,52 @@ declare global {
         [PUZZLE_REGENERATE]: CustomEvent<void>;
     }
 }
+
+// ── Run Types ──
+
+export type RunMode = 'vanilla' | 'random';
+
+export interface RunConfig {
+    puzzleId: string;
+    configLabel: string;
+    seed: number;
+}
+
+export interface RunPuzzleResult {
+    puzzleId: string;
+    configLabel: string;
+    moves: number;
+    optimal: number;
+    time: number;
+}
+
+export interface RunResult {
+    mode: RunMode;
+    date: string;
+    totalTime: number;
+    puzzles: RunPuzzleResult[];
+    totalMoves: number;
+    totalOptimal: number;
+    rank: string;
+}
+
+export type Page =
+    | 'menu'
+    | 'puzzle'
+    | 'melody'
+    | 'settings'
+    | 'run'
+    | 'run-results'
+    | 'puzzle-select';
+
+export const PUZZLE_VANILLA_COUNTS: Record<string, number> = {
+    keypad: 3,
+    vjolt: 1,
+    portableSafe: 0,
+    powerPanel: 0,
+    stagla: 0,
+    graveyard: 0,
+    slidingBlock: 1,
+    labPuzzle: 1,
+    plant43: 2,
+};

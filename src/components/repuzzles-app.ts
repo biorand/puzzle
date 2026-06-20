@@ -14,17 +14,18 @@ import '../puzzles/puzzle-sliding-block';
 import '../puzzles/puzzle-stagla';
 import '../puzzles/puzzle-vjolt';
 import { sleep } from '../puzzles/shared';
-import type { ActionButton, MenuEntry, PuzzleModule, StatusInfo } from '../types';
+import type { ActionButton, MenuEntry, Page, PuzzleModule, RunMode, StatusInfo } from '../types';
 import { PUZZLE_REGENERATE } from '../types';
 import './app-footer';
 import './app-header';
 import './complete-overlay';
 import './melody-composer';
 import './puzzle-menu';
+import './puzzle-select';
+import './run-host';
+import './run-results';
 import './settings-page';
 import './status-bar';
-
-type Page = 'menu' | 'puzzle' | 'melody' | 'settings';
 
 export class RepuzzlesApp extends LitElement {
     @state() private _page: Page = 'menu';
@@ -41,6 +42,10 @@ export class RepuzzlesApp extends LitElement {
     @state() private _activePuzzleId: string | null = null;
     @state() private _activeTutorialStep: number | undefined;
     @state() private _activeForceDifficulty: number | undefined;
+    @state() private _runMode: RunMode = 'random';
+    @state() private _previousHash = '/';
+    @state() private _beforePuzzleHash = '#/';
+    @state() private _beforeSettingsHash: string | null = null;
 
     createRenderRoot() {
         return this;
@@ -62,6 +67,8 @@ export class RepuzzlesApp extends LitElement {
 
     private _router = (): void => {
         const hash = location.hash.replace(/^#\/?/, '') || '/';
+        const prevHash = this._previousHash;
+        this._previousHash = hash;
 
         if (hash === '/' || hash === '') {
             this._showMenu();
@@ -75,6 +82,29 @@ export class RepuzzlesApp extends LitElement {
 
         if (hash === 'settings') {
             this._page = 'settings';
+            this._beforeSettingsHash = prevHash === 'settings' ? null : prevHash;
+            return;
+        }
+
+        if (hash === 'run/vanilla') {
+            this._runMode = 'vanilla';
+            this._page = 'run';
+            return;
+        }
+
+        if (hash === 'run/random') {
+            this._runMode = 'random';
+            this._page = 'run';
+            return;
+        }
+
+        if (hash === 'run/results') {
+            this._page = 'run-results';
+            return;
+        }
+
+        if (hash === 'quickplay') {
+            this._showPuzzleSelect();
             return;
         }
 
@@ -83,6 +113,8 @@ export class RepuzzlesApp extends LitElement {
             const key = `${match[1]}/${match[2]}`;
             const mod = puzzlesByPath.get(key);
             if (mod) {
+                // Store previous page so back returns to the right place
+                this._beforePuzzleHash = prevHash === 'quickplay' ? '#/quickplay' : '#/';
                 this._startPuzzle(mod);
                 return;
             }
@@ -148,18 +180,53 @@ export class RepuzzlesApp extends LitElement {
             }));
     }
 
+    private _showPuzzleSelect(): void {
+        this._page = 'puzzle-select';
+        this._menuEntries = puzzleOrder
+            .map((id) => puzzles.get(id)!)
+            .filter(Boolean)
+            .map((p) => ({
+                id: p.id,
+                name: p.name,
+                thumbnail: p.thumbnail,
+                unlocked: this._isUnlocked(p.id),
+                requirementLabel: this._getRequirementLabel(p.id),
+            }));
+    }
+
     private _onMenuSelect(e: CustomEvent): void {
         this._onPuzzleSelect(e.detail.id);
+    }
+
+    private _onVanillaRun(): void {
+        location.hash = '#/run/vanilla';
+    }
+
+    private _onRandomRun(): void {
+        location.hash = '#/run/random';
+    }
+
+    private _onQuickPlay(): void {
+        location.hash = '#/quickplay';
     }
 
     private _onPuzzleSelect(id: string): void {
         const mod = puzzles.get(id);
         if (!mod) return;
+        this._beforePuzzleHash = this._page === 'puzzle-select' ? '#/quickplay' : '#/';
         location.hash = `#/${mod.sourceGame}/${mod.slug}`;
     }
 
     private _onBack(): void {
-        location.hash = '#/';
+        if (this._page === 'puzzle') {
+            location.hash = this._beforePuzzleHash;
+        } else if (this._page === 'settings' && this._beforeSettingsHash) {
+            const hash = this._beforeSettingsHash;
+            this._beforeSettingsHash = null;
+            location.hash = hash === 'menu' || hash === '/' ? '#/' : `#/${hash}`;
+        } else {
+            location.hash = '#/';
+        }
     }
 
     private _onSettings(): void {
@@ -315,7 +382,7 @@ export class RepuzzlesApp extends LitElement {
             ></${tag}>`;
     }
 
-    private static _PUZZLE_TAGS: Record<string, string> = {
+    static _PUZZLE_TAGS: Record<string, string> = {
         keypad: 'puzzle-keypad',
         slidingBlock: 'puzzle-sliding-block',
         stagla: 'puzzle-stagla',
@@ -332,7 +399,11 @@ export class RepuzzlesApp extends LitElement {
     render() {
         if (this._page === 'melody') {
             return html`
-                <app-header title="Melody Composer" ?show-back @back=${this._onBack}></app-header>
+                <app-header
+                    title="Melody Composer"
+                    ?show-back=${true}
+                    @back=${this._onBack}
+                ></app-header>
                 <melody-composer></melody-composer>
             `;
         }
@@ -341,8 +412,8 @@ export class RepuzzlesApp extends LitElement {
             return html`
                 <app-header
                     title=${this._puzzleName}
-                    ?show-back
-                    ?show-settings
+                    ?show-back=${true}
+                    ?show-settings=${true}
                     @back=${this._onBack}
                     @settings=${this._onSettings}
                 ></app-header>
@@ -363,8 +434,32 @@ export class RepuzzlesApp extends LitElement {
 
         if (this._page === 'settings') {
             return html`
-                <app-header title="Settings" ?show-back @back=${this._onBack}></app-header>
+                <app-header title="Settings" ?show-back=${true} @back=${this._onBack}></app-header>
                 <settings-page @reset=${this._onResetAll}></settings-page>
+            `;
+        }
+
+        if (this._page === 'run') {
+            return html`<run-host mode=${this._runMode}></run-host>`;
+        }
+
+        if (this._page === 'run-results') {
+            return html`<run-results></run-results>`;
+        }
+
+        if (this._page === 'puzzle-select') {
+            return html`
+                <app-header
+                    title="Quick Play"
+                    ?show-back=${true}
+                    ?show-settings=${true}
+                    @back=${this._onBack}
+                    @settings=${this._onSettings}
+                ></app-header>
+                <puzzle-select
+                    .entries=${this._menuEntries}
+                    @select=${this._onMenuSelect}
+                ></puzzle-select>
             `;
         }
 
@@ -375,7 +470,11 @@ export class RepuzzlesApp extends LitElement {
                 ?show-settings
                 @settings=${this._onSettings}
             ></app-header>
-            <puzzle-menu .entries=${this._menuEntries} @select=${this._onMenuSelect}></puzzle-menu>
+            <puzzle-menu
+                @vanilla-run=${this._onVanillaRun}
+                @random-run=${this._onRandomRun}
+                @quick-play=${this._onQuickPlay}
+            ></puzzle-menu>
         `;
     }
 }

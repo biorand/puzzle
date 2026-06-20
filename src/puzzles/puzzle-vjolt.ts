@@ -3,6 +3,7 @@ import { state } from 'lit/decorators.js';
 import { playChime, playTone } from '../audio';
 import { sleep, defaultActions } from './shared';
 import { PuzzleBase } from './base';
+import { Rng } from '../rng';
 
 interface Bottle {
     id: number;
@@ -66,10 +67,6 @@ function getColorClass(value: number, target: number): string {
     return 'vjolt-gray';
 }
 
-function randomInt(min: number, max: number): number {
-    return min + Math.floor(Math.random() * (max - min + 1));
-}
-
 function pairKey(a: number, b: number): string {
     const [low, high] = a < b ? [a, b] : [b, a];
     return `${low},${high}`;
@@ -129,19 +126,19 @@ const TEMPLATES: Array<(w: number, r: number, y: number) => [Equation[], number[
     },
 ];
 
-function generatePuzzle(): PuzzleConfig {
+function generatePuzzle(rng: Rng): PuzzleConfig {
     const w = 1;
-    const r = randomInt(2, 4);
+    const r = rng.nextInteger(2, 4);
     const yMin = Math.max(r + 1, 4);
-    const y = randomInt(yMin, 7);
-    const templateIdx = Math.floor(Math.random() * TEMPLATES.length);
+    const y = rng.nextInteger(yMin, 7);
+    const templateIdx = rng.nextInteger(0, TEMPLATES.length - 1);
     const [equations, results] = TEMPLATES[templateIdx](w, r, y);
     const target = results[results.length - 1];
     const baseVals = [w, r, y];
     for (const v of results) {
         if (baseVals.includes(v)) {
             nameCache.clear();
-            return generatePuzzle();
+            return generatePuzzle(rng);
         }
     }
     nameCache.clear();
@@ -169,8 +166,44 @@ export class PuzzleVjolt extends PuzzleBase {
     private _config: PuzzleConfig | null = null;
     private _nextId = 1;
 
+    get vanillaCount(): number {
+        return 1;
+    }
+
+    private _loadVanillaConfig(w: number, r: number, y: number, templateIdx: number): void {
+        nameCache.clear();
+        const [equations, results] = TEMPLATES[templateIdx](w, r, y);
+        const target = results[results.length - 1];
+        for (const v of [w, r, y, ...results]) getNameForValue(v, target);
+        const bases: [BaseChem, BaseChem, BaseChem] = [
+            { name: 'Water', value: w, colorClass: 'vjolt-blue', label: 'Water' },
+            {
+                name: nameCache.get(r)!,
+                value: r,
+                colorClass: 'vjolt-red',
+                label: nameCache.get(r)!,
+            },
+            {
+                name: nameCache.get(y)!,
+                value: y,
+                colorClass: 'vjolt-yellow',
+                label: nameCache.get(y)!,
+            },
+        ];
+        const pairSet = new Set<string>();
+        for (const eq of equations) pairSet.add(pairKey(eq.leftA, eq.leftB));
+        this._config = { bases, equations, target, validPairs: Array.from(pairSet) };
+        this._resetPuzzle();
+    }
+
+    loadVanilla(index: number): void {
+        if (index === 0) {
+            this._loadVanillaConfig(1, 2, 6, 0);
+        }
+    }
+
     _newPuzzle(): void {
-        this._config = generatePuzzle();
+        this._config = generatePuzzle(this._getRng());
         this._resetPuzzle();
     }
 

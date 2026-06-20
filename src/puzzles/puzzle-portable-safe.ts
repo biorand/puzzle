@@ -56,7 +56,7 @@ export class PuzzlePortableSafe extends PuzzleBase {
     private _mapping: number[] = [];
 
     _newPuzzle(): void {
-        this._mapping = [...Array(NUM_BTNS).keys()].sort(() => Math.random() - 0.5);
+        this._mapping = this._getRng().shuffle([...Array(NUM_BTNS).keys()]);
         this._chain = 0;
         this._startIdx = -1;
         this._moves = 0;

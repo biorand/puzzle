@@ -94,7 +94,7 @@ test.describe('Power Panel Puzzle', () => {
         expect(new Set(v1.ups).size).toBeGreaterThanOrEqual(2);
 
         // Click "New" to get a fresh config
-        await page.locator('#app-footer .action-btn').first().click();
+        await page.locator('app-footer').locator('button').first().click();
         await page.waitForTimeout(300);
 
         const v2 = await page.evaluate(() => {
@@ -262,7 +262,7 @@ test.describe('Power Panel Puzzle', () => {
         await page.locator('.pp-btn-up').click();
         await page.waitForTimeout(500);
 
-        await page.locator('#app-footer .action-btn').last().click();
+        await page.locator('app-footer').locator('button').last().click();
         await page.waitForTimeout(300);
 
         await expect(page.locator('.pp-switch-col').first()).toHaveClass(/pp-active/);

@@ -1,21 +1,47 @@
 import { LitElement } from 'lit';
-import { state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import type { ActionButton, PuzzleLitElement } from '../types';
 import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
+import { Rng } from '../rng';
 
 export abstract class PuzzleBase extends LitElement implements PuzzleLitElement {
     createRenderRoot() {
         return this;
     }
 
+    @property({ type: Object }) rng?: Rng;
+
+    @property({ type: Number }) vanillaIndex = -1;
+
     @state() protected _playing = false;
 
     abstract _newPuzzle(): void;
 
+    get vanillaCount(): number {
+        return 0;
+    }
+
+    loadVanilla(_index: number): void {
+        this._newPuzzle();
+    }
+
+    loadSeed(seed: number): void {
+        this.rng = new Rng(seed);
+        this._newPuzzle();
+    }
+
+    protected _getRng(): Rng {
+        return this.rng ?? new Rng();
+    }
+
     connectedCallback(): void {
         super.connectedCallback();
         this.addEventListener(PUZZLE_REGENERATE, this._regenerateBound);
-        this._newPuzzle();
+        if (this.vanillaIndex >= 0) {
+            this.loadVanilla(this.vanillaIndex);
+        } else {
+            this._newPuzzle();
+        }
         this._syncActions();
     }
 

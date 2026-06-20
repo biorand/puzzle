@@ -3,7 +3,7 @@ import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { playChime, playTone } from '../audio';
-import { defaultActions, flashElements, shuffle, UMBRELLA_SVG } from './shared';
+import { defaultActions, flashElements, UMBRELLA_SVG } from './shared';
 import { PuzzleBase } from './base';
 
 const N = 7;
@@ -123,8 +123,9 @@ export class PuzzleGraveyard extends PuzzleBase {
     }
 
     _newPuzzle(): void {
-        this._symbols = shuffle([...ZODIAC]).slice(0, N);
-        const r = reachableTargets[Math.floor(Math.random() * reachableTargets.length)];
+        const rng = this._getRng();
+        this._symbols = rng.shuffle([...ZODIAC]).slice(0, N);
+        const r = rng.pick(reachableTargets);
         this._targetMask = r.mask;
         this._optimal = r.optimal;
         this._pos = 0;

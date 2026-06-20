@@ -25,20 +25,21 @@ export class PuzzleStagla extends PuzzleBase {
     private _stageInitialStates: boolean[][] = [];
 
     private _generateTargets(): void {
+        const rng = this._getRng();
         this._stageTargets = [];
         this._stageInitialStates = [];
-        this._stageTargets[0] = Math.floor(Math.random() * 4);
+        this._stageTargets[0] = rng.nextInteger(0, 3);
         for (let i = 1; i < 3; i++) {
             let t: number;
             do {
-                t = Math.floor(Math.random() * 4);
+                t = rng.nextInteger(0, 3);
             } while (t === this._stageTargets[i - 1]);
             this._stageTargets[i] = t;
         }
         for (let i = 0; i < 3; i++) {
             let state: boolean[];
             do {
-                state = Array.from({ length: 4 }, () => Math.random() < 0.5);
+                state = Array.from({ length: 4 }, () => rng.next() < 0.5);
             } while (state.every((v, j) => v === (j === this._stageTargets[i])));
             this._stageInitialStates[i] = state;
         }
