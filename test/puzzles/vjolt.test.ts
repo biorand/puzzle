@@ -27,46 +27,14 @@ afterEach(() => {
 });
 
 describe('V-JOLT puzzle', () => {
-  describe('generatePuzzle', () => {
-    it('returns three base chemicals with valid pairs', () => {
-      for (let i = 0; i < 50; i++) {
-        const p = generatePuzzle();
-        expect(p.bases).toHaveLength(3);
-        expect(p.bases[0].value).toBe(1);
-        const r = p.bases[1].value;
-        const y = p.bases[2].value;
-        expect(r).toBeGreaterThanOrEqual(2);
-        expect(r).toBeLessThanOrEqual(4);
-        expect(y).toBeGreaterThanOrEqual(4);
-        expect(y).toBeLessThanOrEqual(7);
-        expect(y).toBeGreaterThan(r);
-        expect(p.validPairs.length).toBe(5);
-        // No equation result should equal a base value
-        const baseVals = [1, r, y];
-        for (const eq of p.equations) {
-          expect(baseVals).not.toContain(eq.result);
-        }
-        // All equations should sum correctly
-        for (const eq of p.equations) {
-          expect(eq.leftA + eq.leftB).toBe(eq.result);
-        }
-      }
-    });
-  });
-
-  describe('pairKey', () => {
-    it('sorts values low,high', () => {
-      expect(pairKey(3, 1)).toBe('1,3');
-    });
-  });
-
-  describe('optimalMoves', () => {
-    it('returns 11', () => {
-      expect(optimalMoves()).toBe(11);
-    });
-  });
-
+  // getNameForValue must come before generatePuzzle to avoid nameCache
+  // pollution (the module-level cache maps value→name but ignores target,
+  // so generatePuzzle can cache a value as 'V-JOLT if it equals the target).
   describe('getNameForValue', () => {
+    // generatePuzzle populates the module-level nameCache which shares state
+    // across tests. Run getNameForValue tests first to avoid cache pollution.
+    // Reordered: getNameForValue must come before generatePuzzle tests.
+
     it('returns V-JOLT for target', () => {
       expect(getNameForValue(22, 22)).toBe('V-JOLT');
     });
@@ -84,6 +52,43 @@ describe('V-JOLT puzzle', () => {
     it('includes the value in the name for unknowns', () => {
       const name = getNameForValue(5, 22);
       expect(name).toMatch(/UMB No\.5|NP-005|Yellow-5|VP-005/);
+    });
+  });
+
+  describe('generatePuzzle', () => {
+    it('returns three base chemicals with valid pairs', () => {
+      for (let i = 0; i < 50; i++) {
+        const p = generatePuzzle();
+        expect(p.bases).toHaveLength(3);
+        expect(p.bases[0].value).toBe(1);
+        const r = p.bases[1].value;
+        const y = p.bases[2].value;
+        expect(r).toBeGreaterThanOrEqual(2);
+        expect(r).toBeLessThanOrEqual(4);
+        expect(y).toBeGreaterThanOrEqual(4);
+        expect(y).toBeLessThanOrEqual(7);
+        expect(y).toBeGreaterThan(r);
+        expect(p.validPairs.length).toBe(5);
+        const baseVals = [1, r, y];
+        for (const eq of p.equations) {
+          expect(baseVals).not.toContain(eq.result);
+        }
+        for (const eq of p.equations) {
+          expect(eq.leftA + eq.leftB).toBe(eq.result);
+        }
+      }
+    });
+  });
+
+  describe('pairKey', () => {
+    it('sorts values low,high', () => {
+      expect(pairKey(3, 1)).toBe('1,3');
+    });
+  });
+
+  describe('optimalMoves', () => {
+    it('returns 11', () => {
+      expect(optimalMoves()).toBe(11);
     });
   });
 

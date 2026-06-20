@@ -70,7 +70,13 @@ puzzle-host {
 
 puzzle-keypad,
 puzzle-sliding-block,
-puzzle-stagla {
+puzzle-stagla,
+puzzle-graveyard,
+puzzle-lab-puzzle,
+puzzle-plant43,
+puzzle-portable-safe,
+puzzle-power-panel,
+puzzle-vjolt {
     display: flex;
     flex-direction: column;
     flex: 1;

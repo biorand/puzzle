@@ -1,9 +1,9 @@
 import { html, LitElement } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { playChime, playMelody, playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
 import type { ActionButton, PuzzleLitElement } from '../types';
+import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
+import { sleep } from './shared';
 
 const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
 const SOLVED = 0x1ff;
@@ -35,6 +35,7 @@ export class PuzzleKeypad extends LitElement implements PuzzleLitElement {
     @state() private _moves = 0;
     @state() private _optimal = 0;
     @state() private _playing = false;
+    @state() private _cellVisible = new Array(9).fill(true);
 
     @property({ type: Number }) tutorialStep?: number;
     @property({ type: Number }) tutorialTotal = 5;
@@ -81,12 +82,13 @@ export class PuzzleKeypad extends LitElement implements PuzzleLitElement {
             d = Math.floor(Math.random() * Math.min(4, maxDist)) + 1;
         }
         const pool = groups[d];
-        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : SOLVED;
         this._initialState = pick;
         this._state = pick;
         this._moves = 0;
         this._optimal = d;
         this._playing = false;
+        this._cellVisible = new Array(9).fill(true);
         this._cheatBuffer = [];
         this._dispatchStatus();
     }
@@ -150,10 +152,12 @@ export class PuzzleKeypad extends LitElement implements PuzzleLitElement {
         this._dispatchActions();
         playChime();
 
-        const cells = this.renderRoot.querySelectorAll<HTMLElement>('.cell');
+        // State-driven animation: hide cells one by one via Lit re-renders
         for (let i = 8; i >= 0; i--) {
             await sleep(120);
-            cells[i]?.classList.remove('orange');
+            const next = [...this._cellVisible];
+            next[i] = false;
+            this._cellVisible = next;
         }
 
         this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
@@ -206,7 +210,9 @@ export class PuzzleKeypad extends LitElement implements PuzzleLitElement {
                 ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(
                     (i) => html`
                         <button
-                            class="cell ${this._state & (1 << i) ? 'orange' : ''}"
+                            class="cell ${this._state & (1 << i) && this._cellVisible[i]
+                                ? 'orange'
+                                : ''}"
                             @click=${this._onCellClick}
                             data-idx=${i}
                             ?disabled=${this._playing}

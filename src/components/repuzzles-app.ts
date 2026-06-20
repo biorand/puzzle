@@ -3,19 +3,25 @@ import { state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { initAudioOnFirstClick, playChime, playTone, playMelody as pMelody } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
-import { sleep } from '../puzzles/shared';
-import { PUZZLE_REGENERATE } from '../types';
-import type { ActionButton, MenuEntry, PuzzleContext, PuzzleModule, StatusInfo } from '../types';
+import '../puzzles/puzzle-graveyard';
 import '../puzzles/puzzle-keypad';
+import '../puzzles/puzzle-lab-puzzle';
+import '../puzzles/puzzle-plant43';
+import '../puzzles/puzzle-portable-safe';
+import '../puzzles/puzzle-power-panel';
 import '../puzzles/puzzle-sliding-block';
 import '../puzzles/puzzle-stagla';
+import '../puzzles/puzzle-vjolt';
+import { sleep } from '../puzzles/shared';
+import type { ActionButton, MenuEntry, PuzzleContext, PuzzleModule, StatusInfo } from '../types';
+import { PUZZLE_REGENERATE } from '../types';
 import './app-footer';
 import './app-header';
 import './complete-overlay';
 import './melody-composer';
-import './settings-page';
 import './puzzle-host';
 import './puzzle-menu';
+import './settings-page';
 import './status-bar';
 
 type Page = 'menu' | 'puzzle' | 'melody' | 'settings';
@@ -38,7 +44,17 @@ export class RepuzzlesApp extends LitElement {
     @state() private _activeForceDifficulty: number | undefined;
 
     private _context: PuzzleContext | null = null;
-    private _convertedIds = new Set(['keypad', 'slidingBlock', 'stagla']);
+    private _convertedIds = new Set([
+        'keypad',
+        'slidingBlock',
+        'stagla',
+        'graveyard',
+        'labPuzzle',
+        'plant43',
+        'portableSafe',
+        'powerPanel',
+        'vjolt',
+    ]);
 
     createRenderRoot() {
         return this;
@@ -357,11 +373,14 @@ export class RepuzzlesApp extends LitElement {
                 const newStep = step + 1;
                 this._setKeypadTutorial(newStep);
                 if (newStep < 5) {
-                    (puzzleEl as Record<string, unknown>).tutorialStep = newStep;
-                    (puzzleEl as Record<string, unknown>).forceDifficulty = [1, 1, 2, 2, 3][
-                        newStep
-                    ];
+                    this._activeTutorialStep = newStep;
+                    this._activeForceDifficulty = [1, 1, 2, 2, 3][newStep];
+                    (puzzleEl as Record<string, unknown>).tutorialStep = this._activeTutorialStep;
+                    (puzzleEl as Record<string, unknown>).forceDifficulty =
+                        this._activeForceDifficulty;
                 } else {
+                    this._activeTutorialStep = undefined;
+                    this._activeForceDifficulty = undefined;
                     (puzzleEl as Record<string, unknown>).tutorialStep = undefined;
                     (puzzleEl as Record<string, unknown>).forceDifficulty = undefined;
                     if (this._getProgress() < 1) this._setProgress(1);
@@ -440,6 +459,42 @@ export class RepuzzlesApp extends LitElement {
                     @puzzle-actions=${this._onPuzzleActions}
                     @puzzle-complete=${this._onPuzzleComplete}
                 ></puzzle-stagla>`;
+            case 'graveyard':
+                return html`<puzzle-graveyard
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-graveyard>`;
+            case 'labPuzzle':
+                return html`<puzzle-lab-puzzle
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-lab-puzzle>`;
+            case 'plant43':
+                return html`<puzzle-plant43
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-plant43>`;
+            case 'portableSafe':
+                return html`<puzzle-portable-safe
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-portable-safe>`;
+            case 'powerPanel':
+                return html`<puzzle-power-panel
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-power-panel>`;
+            case 'vjolt':
+                return html`<puzzle-vjolt
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-actions=${this._onPuzzleActions}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                ></puzzle-vjolt>`;
             default:
                 return null;
         }
@@ -459,7 +514,13 @@ export class RepuzzlesApp extends LitElement {
             const isLit =
                 this._activePuzzleId !== null && this._convertedIds.has(this._activePuzzleId);
             return html`
-                <app-header title=${this._puzzleName} ?show-back @back=${this._onBack}></app-header>
+                <app-header
+                    title=${this._puzzleName}
+                    ?show-back
+                    ?show-settings
+                    @back=${this._onBack}
+                    @settings=${this._onSettings}
+                ></app-header>
                 ${keyed(
                     this._puzzleKey,
                     isLit
