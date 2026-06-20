@@ -45,3 +45,23 @@ export interface PuzzleModule {
     thumbnail: string;
     create(container: HTMLElement, ctx: PuzzleContext): { destroy(): void };
 }
+
+// ── Puzzle Lit Component Protocol ──
+
+export const PUZZLE_STATUS = 'puzzle-status';
+export const PUZZLE_ACTIONS = 'puzzle-actions';
+export const PUZZLE_COMPLETE = 'puzzle-complete';
+export const PUZZLE_REGENERATE = 'puzzle-regenerate';
+
+export interface PuzzleLitElement {
+    regenerate(): void;
+}
+
+declare global {
+    interface HTMLElementEventMap {
+        [PUZZLE_STATUS]: CustomEvent<StatusInfo>;
+        [PUZZLE_ACTIONS]: CustomEvent<ActionButton[]>;
+        [PUZZLE_COMPLETE]: CustomEvent<void>;
+        [PUZZLE_REGENERATE]: CustomEvent<void>;
+    }
+}

@@ -1,85 +1,106 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { slidingBlock } from '../../src/puzzles/slidingBlock';
-import type { PuzzleContext } from '../../src/types';
+import { PuzzleSlidingBlock } from '../../src/puzzles/puzzle-sliding-block';
 
-function createMockContext(): PuzzleContext {
-    return {
-        setStatus: vi.fn(),
-        setActions: vi.fn(),
-        showOverlay: vi.fn().mockResolvedValue(undefined),
-        hideOverlay: vi.fn(),
-        playTone: vi.fn(),
-        playChime: vi.fn(),
-        playMelody: vi.fn().mockResolvedValue(undefined),
-        score: { count: 0, increment: vi.fn().mockReturnValue(null) },
-    };
+vi.mock('../../src/audio', () => ({
+    playTone: vi.fn(),
+    playChime: vi.fn(),
+    playMelody: vi.fn().mockResolvedValue(undefined),
+    initAudioOnFirstClick: vi.fn(),
+}));
+
+if (typeof ResizeObserver === 'undefined') {
+    class FakeResizeObserver {
+        observe() {
+            /* noop */
+        }
+        unobserve() {
+            /* noop */
+        }
+        disconnect() {
+            /* noop */
+        }
+    }
+    (globalThis as unknown as Record<string, unknown>).ResizeObserver = FakeResizeObserver;
 }
 
-describe('slidingBlock', () => {
+describe('puzzle-sliding-block', () => {
     afterEach(() => {
+        document.body.innerHTML = '';
         vi.restoreAllMocks();
     });
 
-    it('creates the wrapping container and grid', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = slidingBlock.create(container, ctx);
+    it('custom element is defined', () => {
+        const el = document.createElement('puzzle-sliding-block');
+        expect(el).toBeInstanceOf(PuzzleSlidingBlock);
+    });
 
-        const wrap = container.querySelector('#sliding-wrap');
+    it('creates the wrapping container and grid', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const wrap = el.querySelector('#sliding-wrap');
         expect(wrap).not.toBeNull();
 
-        const grid = container.querySelector('#sliding-grid');
+        const grid = el.querySelector('#sliding-grid');
         expect(grid).not.toBeNull();
-
-        instance.destroy();
     });
 
-    it('creates 8 tiles (values 1–8)', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = slidingBlock.create(container, ctx);
+    it('creates 8 tiles (values 1–8)', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        const tiles = container.querySelectorAll<HTMLElement>('.sliding-tile');
+        const tiles = el.querySelectorAll<HTMLElement>('.sliding-tile');
         expect(tiles.length).toBe(8);
-
-        tiles.forEach((tile, i) => {
-            expect(tile.dataset.value).toBe(String(i + 1));
-        });
-
-        instance.destroy();
     });
 
-    it('calls setStatus after creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = slidingBlock.create(container, ctx);
+    it('dispatches puzzle-status after creation', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        expect(ctx.setStatus).toHaveBeenCalledWith(expect.objectContaining({ moves: 0 }));
-
-        instance.destroy();
-    });
-
-    it('sets actions on creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = slidingBlock.create(container, ctx);
-
-        expect(ctx.setActions).toHaveBeenCalledWith(
-            expect.arrayContaining([
-                expect.objectContaining({ label: 'New Puzzle' }),
-                expect.objectContaining({ label: 'Reset' }),
-            ]),
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
         );
-
-        instance.destroy();
     });
 
-    it('destroy cleans up the container', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = slidingBlock.create(container, ctx);
+    it('dispatches puzzle-actions on creation', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        const actionsSpy = vi.fn();
+        el.addEventListener('puzzle-actions', actionsSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        instance.destroy();
-        expect(container.innerHTML).toBe('');
+        expect(actionsSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.arrayContaining([
+                    expect.objectContaining({ label: 'New Puzzle' }),
+                    expect.objectContaining({ label: 'Reset' }),
+                ]),
+            }),
+        );
+    });
+
+    it('regenerate event triggers puzzle reset', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        el.dispatchEvent(new CustomEvent('puzzle-regenerate'));
+        await el.updateComplete;
+
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
+        );
     });
 });

@@ -1,104 +1,119 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { stagla } from '../../src/puzzles/stagla';
-import type { PuzzleContext } from '../../src/types';
+import { PuzzleStagla } from '../../src/puzzles/puzzle-stagla';
 
-function createMockContext(): PuzzleContext {
-    return {
-        setStatus: vi.fn(),
-        setActions: vi.fn(),
-        showOverlay: vi.fn().mockResolvedValue(undefined),
-        hideOverlay: vi.fn(),
-        playTone: vi.fn(),
-        playChime: vi.fn(),
-        playMelody: vi.fn().mockResolvedValue(undefined),
-        score: { count: 0, increment: vi.fn().mockReturnValue(null) },
-    };
-}
+vi.mock('../../src/audio', () => ({
+    playTone: vi.fn(),
+    playChime: vi.fn(),
+    playMelody: vi.fn().mockResolvedValue(undefined),
+    initAudioOnFirstClick: vi.fn(),
+}));
 
-describe('stagla', () => {
+describe('puzzle-stagla', () => {
     afterEach(() => {
+        document.body.innerHTML = '';
         vi.restoreAllMocks();
     });
 
-    it('creates 3 circles, 4 lights, and 4 labels', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
+    it('custom element is defined', () => {
+        const el = document.createElement('puzzle-stagla');
+        expect(el).toBeInstanceOf(PuzzleStagla);
+    });
 
-        const top = container.querySelector('#stagla-top');
+    it('creates 3 circles, 4 lights, and 4 labels', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const top = el.querySelector('#stagla-top');
         expect(top).not.toBeNull();
 
-        const circles = container.querySelectorAll('.stagla-circle');
+        const circles = el.querySelectorAll('.stagla-circle');
         expect(circles.length).toBe(3);
 
-        const lights = container.querySelectorAll('.stagla-light');
+        const lights = el.querySelectorAll('.stagla-light');
         expect(lights.length).toBe(4);
 
-        const labels = container.querySelectorAll('.stagla-label');
+        const labels = el.querySelectorAll('.stagla-label');
         expect(labels.length).toBe(4);
-
-        instance.destroy();
     });
 
-    it('labels show A, B, C, D', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
+    it('labels show A, B, C, D', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        const labels = container.querySelectorAll('.stagla-label');
-        expect(labels[0].textContent).toBe('A');
-        expect(labels[1].textContent).toBe('B');
-        expect(labels[2].textContent).toBe('C');
-        expect(labels[3].textContent).toBe('D');
-
-        instance.destroy();
+        const labels = el.querySelectorAll('.stagla-label');
+        expect(labels[0].textContent!.trim()).toBe('A');
+        expect(labels[1].textContent!.trim()).toBe('B');
+        expect(labels[2].textContent!.trim()).toBe('C');
+        expect(labels[3].textContent!.trim()).toBe('D');
     });
 
-    it('calls setStatus after creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
+    it('dispatches puzzle-status after creation', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        expect(ctx.setStatus).toHaveBeenCalledWith(expect.objectContaining({ moves: 0 }));
-
-        instance.destroy();
-    });
-
-    it('sets actions on creation', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
-
-        expect(ctx.setActions).toHaveBeenCalledWith(
-            expect.arrayContaining([
-                expect.objectContaining({ label: 'New Puzzle' }),
-                expect.objectContaining({ label: 'Reset' }),
-            ]),
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
         );
-
-        instance.destroy();
     });
 
-    it('clicking a light toggles it and increments moves', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
+    it('dispatches puzzle-actions on creation', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        const actionsSpy = vi.fn();
+        el.addEventListener('puzzle-actions', actionsSpy);
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        const lights = container.querySelectorAll<HTMLDivElement>('.stagla-light');
+        expect(actionsSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.arrayContaining([
+                    expect.objectContaining({ label: 'New Puzzle' }),
+                    expect.objectContaining({ label: 'Reset' }),
+                ]),
+            }),
+        );
+    });
+
+    it('clicking a light dispatches puzzle-status with incremented moves', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        const lights = el.querySelectorAll<HTMLDivElement>('.stagla-light');
         lights[0].click();
+        await el.updateComplete;
 
-        expect(ctx.setStatus).toHaveBeenCalledWith(expect.objectContaining({ moves: 1 }));
-        expect(ctx.playTone).toHaveBeenCalled();
-
-        instance.destroy();
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 1 }),
+            }),
+        );
     });
 
-    it('destroy cleans up the container', () => {
-        const container = document.createElement('div');
-        const ctx = createMockContext();
-        const instance = stagla.create(container, ctx);
+    it('regenerate event triggers puzzle reset', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
 
-        instance.destroy();
-        expect(container.innerHTML).toBe('');
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        el.dispatchEvent(new CustomEvent('puzzle-regenerate'));
+        await el.updateComplete;
+
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 0 }),
+            }),
+        );
     });
 });

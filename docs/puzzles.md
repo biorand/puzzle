@@ -3,11 +3,11 @@
 ## RE 1
 
 - [x] Keypad
-- [ ] V-Jolt
+- [x] V-Jolt
 
 ## RE 2
 
-- [ ] UUDDU power
+- [x] UUDDU power
 
 ## RE 3
 
@@ -28,6 +28,7 @@
 - [x] Graveyard
 - [ ] Church
 - [x] Sliding block
+- [x] Lab power circuit
 
 ## RE 5
 
@@ -48,7 +49,7 @@
 
 - [x] Portable safe
 - [ ] Circuit
-- [ ] UUDDU
+- [ ] Power meter
 - [ ] Herbicide
 
 ## RE 3R
