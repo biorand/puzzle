@@ -1,10 +1,9 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { playChime, playTone } from '../audio';
-import type { ActionButton, PuzzleLitElement } from '../types';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { sleep } from './shared';
+import { sleep, defaultActions } from './shared';
+import { PuzzleBase } from './base';
 
 const SWITCH_COUNT = 5;
 const START = 0;
@@ -55,42 +54,16 @@ function generateUniquePuzzle(): { values: SwitchValues[]; target: number } | nu
     return null;
 }
 
-export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
+export class PuzzlePowerPanel extends PuzzleBase {
     @state() private _switchValues: SwitchValues[] = [];
     @state() private _currentTarget = 50;
     @state() private _upDown: boolean[] = [];
     @state() private _switchIdx = 0;
     @state() private _needle = START;
     @state() private _won = false;
-    @state() private _playing = false;
     @state() private _flashing = false;
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         const puzzle = generateUniquePuzzle();
         if (!puzzle) {
             this._switchValues = [
@@ -111,10 +84,10 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
         this._won = false;
         this._playing = false;
         this._flashing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._switchIdx, SWITCH_COUNT);
     }
 
-    private _resetState(): void {
+    private _resetPuzzle(): void {
         this._upDown = [];
         this._switchIdx = 0;
         this._needle = START;
@@ -152,7 +125,7 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
         await sleep(50);
         this._flashing = false;
         await sleep(550);
-        this._resetState();
+        this._resetPuzzle();
     }
 
     private _onActionPress(e: Event): void {
@@ -174,9 +147,9 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
             await sleep(400);
             this._playFailTone();
             await this._flashAndReset();
-            this._dispatchStatus();
+            this._sendStatus(this._switchIdx, SWITCH_COUNT);
             this._playing = false;
-            this._dispatchActions();
+            this._syncActions();
             return;
         }
 
@@ -198,8 +171,8 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
             } else {
                 this._playing = false;
                 await this._flashAndReset();
-                this._dispatchStatus();
-                this._dispatchActions();
+                this._sendStatus(this._switchIdx, SWITCH_COUNT);
+                this._syncActions();
             }
         } else {
             this._playing = false;
@@ -208,7 +181,7 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
 
     private async _completePuzzle(): Promise<void> {
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
         playChime();
 
         const needleEl = this.renderRoot.querySelector<HTMLElement>('.pp-needle');
@@ -221,42 +194,16 @@ export class PuzzlePowerPanel extends LitElement implements PuzzleLitElement {
             }
         }
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._switchIdx, optimal: SWITCH_COUNT },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetState();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

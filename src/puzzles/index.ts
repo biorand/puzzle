@@ -148,52 +148,52 @@ const MODULES: Array<{
     name: string;
     thumbnail: string;
 }> = [
-        { id: 'keypad', slug: 'keypad', sourceGame: 're1', name: 'Keypad', thumbnail: KEYPAD_THUMB },
-        { id: 'vjolt', slug: 'v-jolt', sourceGame: 're1r', name: 'V-JOLT', thumbnail: VJOLT_THUMB },
-        {
-            id: 'portableSafe',
-            slug: 'portable-safe',
-            sourceGame: 're2r',
-            name: 'Portable Safe',
-            thumbnail: SAFE_THUMB,
-        },
-        {
-            id: 'powerPanel',
-            slug: 'power-panel',
-            sourceGame: 're2',
-            name: 'Power Panel',
-            thumbnail: PP_THUMB,
-        },
-        { id: 'stagla', slug: 'stagla', sourceGame: 're3', name: 'Stagla', thumbnail: STAGLA_THUMB },
-        {
-            id: 'graveyard',
-            slug: 'graveyard',
-            sourceGame: 're4',
-            name: 'Graveyard',
-            thumbnail: GRAVEYARD_THUMB,
-        },
-        {
-            id: 'slidingBlock',
-            slug: 'sliding-block',
-            sourceGame: 're4',
-            name: 'Sliding Block',
-            thumbnail: SLIDING_THUMB,
-        },
-        {
-            id: 'labPuzzle',
-            slug: 'lab-puzzle',
-            sourceGame: 're4',
-            name: 'Lab Puzzle',
-            thumbnail: LAB_THUMB,
-        },
-        {
-            id: 'plant43',
-            slug: 'plant-43',
-            sourceGame: 're2r',
-            name: 'Plant 43',
-            thumbnail: PLANT43_THUMB,
-        },
-    ];
+    { id: 'keypad', slug: 'keypad', sourceGame: 're1', name: 'Keypad', thumbnail: KEYPAD_THUMB },
+    { id: 'vjolt', slug: 'v-jolt', sourceGame: 're1r', name: 'V-JOLT', thumbnail: VJOLT_THUMB },
+    {
+        id: 'portableSafe',
+        slug: 'portable-safe',
+        sourceGame: 're2r',
+        name: 'Portable Safe',
+        thumbnail: SAFE_THUMB,
+    },
+    {
+        id: 'powerPanel',
+        slug: 'power-panel',
+        sourceGame: 're2',
+        name: 'Power Panel',
+        thumbnail: PP_THUMB,
+    },
+    { id: 'stagla', slug: 'stagla', sourceGame: 're3', name: 'Stagla', thumbnail: STAGLA_THUMB },
+    {
+        id: 'graveyard',
+        slug: 'graveyard',
+        sourceGame: 're4',
+        name: 'Graveyard',
+        thumbnail: GRAVEYARD_THUMB,
+    },
+    {
+        id: 'slidingBlock',
+        slug: 'sliding-block',
+        sourceGame: 're4',
+        name: 'Sliding Block',
+        thumbnail: SLIDING_THUMB,
+    },
+    {
+        id: 'labPuzzle',
+        slug: 'lab-puzzle',
+        sourceGame: 're4',
+        name: 'Lab Puzzle',
+        thumbnail: LAB_THUMB,
+    },
+    {
+        id: 'plant43',
+        slug: 'plant-43',
+        sourceGame: 're2r',
+        name: 'Plant 43',
+        thumbnail: PLANT43_THUMB,
+    },
+];
 
 export const puzzles = new Map<string, PuzzleModule>(
     MODULES.map(
@@ -203,7 +203,7 @@ export const puzzles = new Map<string, PuzzleModule>(
                 {
                     ...m,
                     create() {
-                        return { destroy() { } };
+                        return { destroy() {} };
                     },
                 },
             ] as [string, PuzzleModule],

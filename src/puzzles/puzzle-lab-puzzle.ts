@@ -1,9 +1,8 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { playMelody, playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import type { ActionButton, PuzzleLitElement } from '../types';
+import { sleep, defaultActions } from './shared';
+import { PuzzleBase } from './base';
 
 type Direction = 'up' | 'right' | 'down' | 'left';
 type Color = 'blue' | 'green' | 'yellow' | 'red';
@@ -76,42 +75,16 @@ function solve(grid: Cell[]): number[] | null {
     return best;
 }
 
-export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
+export class PuzzleLabPuzzle extends PuzzleBase {
     @state() private _grid: Cell[] = [];
     @state() private _colorPresses: number[] = [0, 0, 0, 0];
     @state() private _moves = 0;
     @state() private _optimal = 0;
-    @state() private _playing = false;
     @state() private _flashState: boolean[] = new Array(9).fill(false);
 
     private _initialGrid: Cell[] = [];
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         let solution: number[] | null = null;
         let attempts = 0;
         let grid: Cell[];
@@ -140,7 +113,7 @@ export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
         this._optimal = solution ? solution.reduce((a, b) => a + b, 0) : 0;
         this._playing = false;
         this._flashState = new Array(9).fill(false);
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _resetPuzzle(): void {
@@ -149,7 +122,7 @@ export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
         this._moves = 0;
         this._playing = false;
         this._flashState = new Array(9).fill(false);
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _onCellClick(e: Event): void {
@@ -174,7 +147,7 @@ export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
             this._flashState = new Array(9).fill(false);
         }, 500);
 
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
 
         const powered = tracePower(this._grid, this._colorPresses);
         if (isSolved(powered, this._grid, this._colorPresses)) {
@@ -184,7 +157,7 @@ export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
 
     private async _completePuzzle(): Promise<void> {
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
 
         const powered = tracePower(this._grid, this._colorPresses);
         const melodyPromise = playMelody('E4G4A4C5E5D5C5G4');
@@ -206,42 +179,16 @@ export class PuzzleLabPuzzle extends LitElement implements PuzzleLitElement {
 
         await melodyPromise;
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: this._optimal },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

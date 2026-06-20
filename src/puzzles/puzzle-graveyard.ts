@@ -1,11 +1,10 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { playChime, playTone } from '../audio';
-import type { ActionButton, PuzzleLitElement } from '../types';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { flashElements, shuffle, UMBRELLA_SVG } from './shared';
+import { defaultActions, flashElements, shuffle, UMBRELLA_SVG } from './shared';
+import { PuzzleBase } from './base';
 
 const N = 7;
 const STEPS = [3, 4];
@@ -61,12 +60,11 @@ interface SymbolPos {
     marginTop: string;
 }
 
-export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
+export class PuzzleGraveyard extends PuzzleBase {
     @state() private _pos = 0;
     @state() private _lights = 0;
     @state() private _moves = 0;
     @state() private _optimal = 0;
-    @state() private _playing = false;
     @state() private _symbols: string[] = [];
     @state() private _targetMask = 0;
     @state() private _pointerAngle = 0;
@@ -77,21 +75,9 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
     @state() private _moving = false;
     private _resizeObserver: ResizeObserver | null = null;
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
     disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
         this._resizeObserver?.disconnect();
+        super.disconnectedCallback();
     }
 
     firstUpdated(): void {
@@ -99,15 +85,6 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
         this._resizeObserver = new ResizeObserver(() => this._positionDial());
         const area = this.renderRoot.querySelector('#graveyard-dial-area');
         if (area) this._resizeObserver.observe(area);
-    }
-
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
     }
 
     private _positionDial(): void {
@@ -145,7 +122,7 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
         this._symbolPositions = positions;
     }
 
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         this._symbols = shuffle([...ZODIAC]).slice(0, N);
         const r = reachableTargets[Math.floor(Math.random() * reachableTargets.length)];
         this._targetMask = r.mask;
@@ -156,7 +133,7 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
         this._playing = false;
         this._moving = false;
         this._pointerAngle = 0;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _resetPuzzle(): void {
@@ -166,7 +143,7 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
         this._playing = false;
         this._moving = false;
         this._pointerAngle = 0;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _onStepClick(e: Event): void {
@@ -192,48 +169,22 @@ export class PuzzleGraveyard extends LitElement implements PuzzleLitElement {
 
     private async _completePuzzle(): Promise<void> {
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
         playChime();
 
         const symbols = this.renderRoot.querySelectorAll<HTMLElement>('.graveyard-symbol');
         await flashElements(Array.from(symbols), 5, 150);
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: this._optimal },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

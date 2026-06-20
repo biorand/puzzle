@@ -84,3 +84,15 @@ export async function flashElements(
         await sleep(ms);
     }
 }
+
+export function defaultActions(
+    playing: boolean,
+    generate: () => void,
+    reset: () => void,
+): ActionButton[] {
+    if (playing) return [];
+    return [
+        { label: 'New Puzzle', handler: generate },
+        { label: 'Reset', handler: reset },
+    ];
+}

@@ -1,9 +1,8 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { playChime, playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import type { ActionButton, PuzzleLitElement } from '../types';
+import { sleep, defaultActions } from './shared';
+import { PuzzleBase } from './base';
 
 interface Bottle {
     id: number;
@@ -161,54 +160,28 @@ function optimalMoves(): number {
     return 11;
 }
 
-export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
+export class PuzzleVjolt extends PuzzleBase {
     @state() private _slots: (Bottle | null)[] = [];
     @state() private _selectedIdxs: number[] = [];
     @state() private _moves = 0;
     @state() private _won = false;
-    @state() private _playing = false;
 
     private _config: PuzzleConfig | null = null;
     private _nextId = 1;
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._newPuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._newPuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
-    private _newPuzzle(): void {
+    _newPuzzle(): void {
         this._config = generatePuzzle();
-        this._restartPuzzle();
+        this._resetPuzzle();
     }
 
-    private _restartPuzzle(): void {
+    private _resetPuzzle(): void {
         this._slots = [null, null, null, null];
         this._nextId = 1;
         this._selectedIdxs = [];
         this._moves = 0;
         this._won = false;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, optimalMoves());
     }
 
     private _onShelfClick(e: Event): void {
@@ -237,7 +210,7 @@ export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
         this._slots = next;
         this._moves++;
         playTone(0.3);
-        this._dispatchStatus();
+        this._sendStatus(this._moves, optimalMoves());
     }
 
     private _handleBottleClick(idx: number): void {
@@ -274,7 +247,7 @@ export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
             this._moves++;
             playTone(0.2);
             this._slots = next;
-            this._dispatchStatus();
+            this._sendStatus(this._moves, optimalMoves());
             return;
         }
 
@@ -294,7 +267,7 @@ export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
             this._moves++;
             playTone(0.5);
             this._slots = next;
-            this._dispatchStatus();
+            this._sendStatus(this._moves, optimalMoves());
             if (newValue === this._config.target) {
                 this._won = true;
                 this._triggerWin();
@@ -325,13 +298,13 @@ export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
         this._selectedIdxs = this._selectedIdxs.filter((i) => i !== idx);
         this._moves++;
         playTone(0.15);
-        this._dispatchStatus();
+        this._sendStatus(this._moves, optimalMoves());
     }
 
     private async _triggerWin(): Promise<void> {
         if (!this._config) return;
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
 
         const targetIdx = this._slots.findIndex(
             (s) => s?.value === this._config!.target && !s.isPoison,
@@ -347,42 +320,16 @@ export class PuzzleVjolt extends LitElement implements PuzzleLitElement {
         playChime();
         await sleep(400);
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: optimalMoves() },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._newPuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._restartPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

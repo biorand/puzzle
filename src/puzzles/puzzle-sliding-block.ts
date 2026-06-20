@@ -1,12 +1,10 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { playMelody, playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { UMBRELLA_SVG } from './shared';
-import type { ActionButton, PuzzleLitElement } from '../types';
+import { sleep, defaultActions, UMBRELLA_SVG } from './shared';
+import { PuzzleBase } from './base';
 
 const ROWS = 3;
 const COLS = 3;
@@ -103,32 +101,19 @@ interface TilePos {
     row: number;
 }
 
-export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
+export class PuzzleSlidingBlock extends PuzzleBase {
     @state() private _board: number[] = [];
     @state() private _moves = 0;
     @state() private _optimal = 0;
-    @state() private _playing = false;
     @state() private _cellSize = 0;
 
     private _blankPos = 0;
     private _initialBoard: number[] = [];
     private _resizeObserver: ResizeObserver | null = null;
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
     disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
         this._resizeObserver?.disconnect();
+        super.disconnectedCallback();
     }
 
     firstUpdated(): void {
@@ -138,15 +123,6 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         if (wrap) this._resizeObserver.observe(wrap);
     }
 
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
     private _updateCellSize(): void {
         const wrap = this.renderRoot.querySelector('#sliding-wrap');
         if (wrap) {
@@ -154,7 +130,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         }
     }
 
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         const result = shufflePuzzle();
         this._board = result.board;
         this._optimal = result.optimal;
@@ -162,7 +138,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         this._moves = 0;
         this._playing = false;
         this._initialBoard = [...this._board];
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _resetPuzzle(): void {
@@ -170,7 +146,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         this._blankPos = this._board.indexOf(0);
         this._moves = 0;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
     }
 
     private _onTileClick(e: Event): void {
@@ -184,7 +160,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         this._board = newBoard;
         this._moves++;
         playTone(val / SIZE);
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
         if (this._board.join(',') === GOAL_STR) {
             setTimeout(() => this._completePuzzle(), 200);
         }
@@ -192,7 +168,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
 
     private async _completePuzzle(): Promise<void> {
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
 
         const melodyPromise = playMelody('G4E5C5D5E5C5G4');
         const tiles = this.renderRoot.querySelectorAll<HTMLElement>('.sliding-tile');
@@ -204,7 +180,7 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         for (const el of tiles) el.style.filter = '';
         await melodyPromise;
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
     private _getTiles(): TilePos[] {
@@ -223,39 +199,13 @@ export class PuzzleSlidingBlock extends LitElement implements PuzzleLitElement {
         return `${(goalCol / (COLS - 1)) * 100}% ${(goalRow / (ROWS - 1)) * 100}%`;
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: this._optimal },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

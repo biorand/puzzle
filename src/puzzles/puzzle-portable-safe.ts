@@ -1,12 +1,10 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { playChime, playMelody, playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { UMBRELLA_SVG } from './shared';
-import type { ActionButton, PuzzleLitElement } from '../types';
+import { defaultActions, sleep, UMBRELLA_SVG } from './shared';
+import { PuzzleBase } from './base';
 
 const GRID_SIZE = 4;
 const NUM_BTNS = GRID_SIZE * 2;
@@ -50,53 +48,20 @@ for (let i = 0; i < N; i++) {
     });
 }
 
-export class PuzzlePortableSafe extends LitElement implements PuzzleLitElement {
+export class PuzzlePortableSafe extends PuzzleBase {
     @state() private _chain = 0;
     @state() private _startIdx = -1;
     @state() private _moves = 0;
-    @state() private _playing = false;
 
     private _mapping: number[] = [];
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
-    private _inChain(i: number): boolean {
-        if (this._chain === 0) return false;
-        const end = this._startIdx + this._chain;
-        if (end <= NUM_BTNS) return this._mapping[i] >= this._startIdx && this._mapping[i] < end;
-        return this._mapping[i] >= this._startIdx || this._mapping[i] < end - NUM_BTNS;
-    }
-
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         this._mapping = [...Array(NUM_BTNS).keys()].sort(() => Math.random() - 0.5);
         this._chain = 0;
         this._startIdx = -1;
         this._moves = 0;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
     }
 
     private _resetPuzzle(): void {
@@ -104,7 +69,14 @@ export class PuzzlePortableSafe extends LitElement implements PuzzleLitElement {
         this._startIdx = -1;
         this._moves = 0;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+    }
+
+    private _inChain(i: number): boolean {
+        if (this._chain === 0) return false;
+        const end = this._startIdx + this._chain;
+        if (end <= NUM_BTNS) return this._mapping[i] >= this._startIdx && this._mapping[i] < end;
+        return this._mapping[i] >= this._startIdx || this._mapping[i] < end - NUM_BTNS;
     }
 
     private _onBtnClick(e: Event): void {
@@ -120,28 +92,28 @@ export class PuzzlePortableSafe extends LitElement implements PuzzleLitElement {
             this._chain = 1;
             this._moves++;
             playTone(this._chain / NUM_BTNS);
-            this._dispatchStatus();
+            this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
         } else {
             const expected = (this._startIdx + this._chain) % NUM_BTNS;
             if (lightIdx === expected) {
                 this._chain++;
                 this._moves++;
                 playTone(this._chain / NUM_BTNS);
-                this._dispatchStatus();
+                this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
                 if (this._chain === NUM_BTNS) this._completePuzzle();
             } else {
                 this._startIdx = lightIdx;
                 this._chain = 1;
                 this._moves++;
                 playTone(this._chain / NUM_BTNS);
-                this._dispatchStatus();
+                this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
             }
         }
     }
 
     private async _completePuzzle(): Promise<void> {
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
         playChime();
 
         const melodyPromise = playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
@@ -169,42 +141,16 @@ export class PuzzlePortableSafe extends LitElement implements PuzzleLitElement {
             await sleep(100);
         }
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: NUM_BTNS * 2 - 2 },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

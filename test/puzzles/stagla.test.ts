@@ -8,7 +8,8 @@ vi.mock('../../src/audio', () => ({
     initAudioOnFirstClick: vi.fn(),
 }));
 
-vi.mock('../../src/puzzles/shared', () => ({
+vi.mock('../../src/puzzles/shared', async () => ({
+    ...(await vi.importActual('../../src/puzzles/shared')),
     sleep: vi.fn().mockResolvedValue(undefined),
 }));
 

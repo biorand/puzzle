@@ -1,10 +1,9 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { playChime, playTone } from '../audio';
-import type { ActionButton, PuzzleLitElement } from '../types';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { sleep } from './shared';
+import { sleep, defaultActions } from './shared';
+import { PuzzleBase } from './base';
 
 type Action = 'red' | 'blue' | 'green';
 interface Plant43State {
@@ -161,43 +160,16 @@ const ICONS: Record<string, string> = {
     blue: 'sync_alt',
 };
 
-export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
+export class PuzzlePlant43 extends PuzzleBase {
     @state() private _currentState: Plant43State | null = null;
     @state() private _moves = 0;
     @state() private _optimal = 0;
     @state() private _won = false;
     @state() private _animating = false;
-    /** Not used in render() - avoid @state to prevent overwriting drain animation */
-    private _playing = false;
 
     private _puzzleConfig: PuzzleConfig | null = null;
 
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._newPuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._newPuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
-
-    private _newPuzzle(): void {
+    _newPuzzle(): void {
         this._puzzleConfig = generatePuzzle();
         const s = this._puzzleConfig.startState;
         this._currentState = { fills: [...s.fills], slots: [...s.slots] };
@@ -206,7 +178,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         this._won = false;
         this._animating = false;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
         // Reset fill bar transitions after re-render
         requestAnimationFrame(() => {
             const bars = this.renderRoot.querySelectorAll<HTMLElement>('.plant43-tube-fill');
@@ -214,7 +186,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         });
     }
 
-    private _restartPuzzle(): void {
+    private _resetPuzzle(): void {
         if (!this._puzzleConfig) return;
         const s = this._puzzleConfig.startState;
         this._currentState = { fills: [...s.fills], slots: [...s.slots] };
@@ -222,7 +194,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         this._won = false;
         this._animating = false;
         this._playing = false;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
         requestAnimationFrame(() => {
             const bars = this.renderRoot.querySelectorAll<HTMLElement>('.plant43-tube-fill');
             for (const bar of bars) bar.style.transition = `height ${POUR_DURATION}ms ease`;
@@ -242,7 +214,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         this._animating = true;
         this._currentState = next;
         this._moves++;
-        this._dispatchStatus();
+        this._sendStatus(this._moves, this._optimal);
 
         const delay = action === 'green' ? POUR_DURATION + 50 : 370;
 
@@ -261,7 +233,7 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         if (!this._currentState || !this._puzzleConfig) return;
 
         this._playing = true;
-        this._dispatchActions();
+        this._syncActions();
 
         // Wait for any pending Lit updates (from _animating change) to flush
         await this.updateComplete;
@@ -285,43 +257,16 @@ export class PuzzlePlant43 extends LitElement implements PuzzleLitElement {
         await sleep(DRAIN_DURATION + 200);
         playChime();
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        if (!this._puzzleConfig) return;
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._moves, optimal: this._puzzleConfig.optimalMoves },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._newPuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._restartPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 

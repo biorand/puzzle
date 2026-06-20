@@ -1,5 +1,6 @@
-import { html, LitElement } from 'lit';
+import { LitElement, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
+import { html, unsafeStatic } from 'lit/static-html.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { initAudioOnFirstClick, playMelody as pMelody } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
@@ -233,14 +234,15 @@ export class RepuzzlesApp extends LitElement {
                 if (newStep < 5) {
                     this._activeTutorialStep = newStep;
                     this._activeForceDifficulty = [1, 1, 2, 2, 3][newStep];
-                    (puzzleEl as Record<string, unknown>).tutorialStep = this._activeTutorialStep;
-                    (puzzleEl as Record<string, unknown>).forceDifficulty =
+                    (puzzleEl as unknown as Record<string, unknown>).tutorialStep =
+                        this._activeTutorialStep;
+                    (puzzleEl as unknown as Record<string, unknown>).forceDifficulty =
                         this._activeForceDifficulty;
                 } else {
                     this._activeTutorialStep = undefined;
                     this._activeForceDifficulty = undefined;
-                    (puzzleEl as Record<string, unknown>).tutorialStep = undefined;
-                    (puzzleEl as Record<string, unknown>).forceDifficulty = undefined;
+                    (puzzleEl as unknown as Record<string, unknown>).tutorialStep = undefined;
+                    (puzzleEl as unknown as Record<string, unknown>).forceDifficulty = undefined;
                     if (this._getProgress() < 1) this._setProgress(1);
                 }
             }
@@ -295,68 +297,35 @@ export class RepuzzlesApp extends LitElement {
     }
 
     private _renderLitPuzzle() {
-        switch (this._activePuzzleId) {
-            case 'keypad':
-                return html`<puzzle-keypad
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                    @cheat-unlock-all=${this._onCheatUnlock}
-                    .tutorialStep=${this._activeTutorialStep}
-                    .forceDifficulty=${this._activeForceDifficulty}
-                ></puzzle-keypad>`;
-            case 'slidingBlock':
-                return html`<puzzle-sliding-block
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-sliding-block>`;
-            case 'stagla':
-                return html`<puzzle-stagla
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-stagla>`;
-            case 'graveyard':
-                return html`<puzzle-graveyard
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-graveyard>`;
-            case 'labPuzzle':
-                return html`<puzzle-lab-puzzle
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-lab-puzzle>`;
-            case 'plant43':
-                return html`<puzzle-plant43
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-plant43>`;
-            case 'portableSafe':
-                return html`<puzzle-portable-safe
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-portable-safe>`;
-            case 'powerPanel':
-                return html`<puzzle-power-panel
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-power-panel>`;
-            case 'vjolt':
-                return html`<puzzle-vjolt
-                    @puzzle-status=${this._onPuzzleStatus}
-                    @puzzle-actions=${this._onPuzzleActions}
-                    @puzzle-complete=${this._onPuzzleComplete}
-                ></puzzle-vjolt>`;
-            default:
-                return null;
-        }
+        const tagName = RepuzzlesApp._PUZZLE_TAGS[this._activePuzzleId ?? ''];
+        if (!tagName) return null;
+        const tag = unsafeStatic(tagName);
+        const extra =
+            this._activePuzzleId === 'keypad'
+                ? html`.tutorialStep=${this._activeTutorialStep}
+                  .forceDifficulty=${this._activeForceDifficulty}
+                  @cheat-unlock-all=${this._onCheatUnlock}`
+                : nothing;
+        return html`
+            <${tag}
+                @puzzle-status=${this._onPuzzleStatus}
+                @puzzle-actions=${this._onPuzzleActions}
+                @puzzle-complete=${this._onPuzzleComplete}
+                ${extra}
+            ></${tag}>`;
     }
+
+    private static _PUZZLE_TAGS: Record<string, string> = {
+        keypad: 'puzzle-keypad',
+        slidingBlock: 'puzzle-sliding-block',
+        stagla: 'puzzle-stagla',
+        graveyard: 'puzzle-graveyard',
+        labPuzzle: 'puzzle-lab-puzzle',
+        plant43: 'puzzle-plant43',
+        portableSafe: 'puzzle-portable-safe',
+        powerPanel: 'puzzle-power-panel',
+        vjolt: 'puzzle-vjolt',
+    };
 
     // ── Render ──
 

@@ -1,9 +1,8 @@
-import { html, LitElement } from 'lit';
+import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { playTone } from '../audio';
-import type { ActionButton, PuzzleLitElement } from '../types';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
-import { sleep } from './shared';
+import { sleep, defaultActions } from './shared';
+import { PuzzleBase } from './base';
 
 const TOGGLES: number[][] = [
     [0, 1],
@@ -15,41 +14,15 @@ const TOGGLES: number[][] = [
 const LABELS = ['A', 'B', 'C', 'D'] as const;
 const OPTIMAL_MAP = [3, 2, 2, 3];
 
-export class PuzzleStagla extends LitElement implements PuzzleLitElement {
+export class PuzzleStagla extends PuzzleBase {
     @state() private _lights: boolean[] = [];
     @state() private _stage = 0;
     @state() private _completedStages: boolean[] = [];
     @state() private _totalMoves = 0;
     @state() private _optimal = 0;
-    @state() private _playing = false;
 
     private _stageTargets: number[] = [];
     private _stageInitialStates: boolean[][] = [];
-
-    createRenderRoot() {
-        return this;
-    }
-
-    connectedCallback(): void {
-        super.connectedCallback();
-        this.addEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    disconnectedCallback(): void {
-        super.disconnectedCallback();
-        this.removeEventListener(PUZZLE_REGENERATE, this._onRegenerate as EventListener);
-    }
-
-    regenerate(): void {
-        this._generatePuzzle();
-        this._dispatchActions();
-    }
-
-    private _onRegenerate(): void {
-        this.regenerate();
-    }
 
     private _generateTargets(): void {
         this._stageTargets = [];
@@ -75,7 +48,7 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
             OPTIMAL_MAP[this._stageTargets[2]];
     }
 
-    private _generatePuzzle(): void {
+    _newPuzzle(): void {
         this._generateTargets();
         this._lights = this._stageInitialStates[0]?.slice() ?? [false, false, false, false];
         this._stage = 0;
@@ -83,7 +56,7 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
         this._playing = false;
         this._totalMoves = 0;
         playTone(1);
-        this._dispatchStatus();
+        this._sendStatus(this._totalMoves, this._optimal);
     }
 
     private _resetPuzzle(): void {
@@ -93,7 +66,7 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
         this._playing = false;
         this._totalMoves = 0;
         playTone(1);
-        this._dispatchStatus();
+        this._sendStatus(this._totalMoves, this._optimal);
     }
 
     private _toggle(idx: number): void {
@@ -118,7 +91,7 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
         this._toggle(idx);
         this._totalMoves++;
         playTone(idx / 3);
-        this._dispatchStatus();
+        this._sendStatus(this._totalMoves, this._optimal);
         if (this._checkStageComplete()) {
             this._completeStage();
         }
@@ -157,11 +130,11 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
         this._lights = this._stageInitialStates[this._stage].slice();
         playTone(1);
         this._playing = false;
-        this._dispatchActions();
+        this._syncActions();
     }
 
     private async _completePuzzle(): Promise<void> {
-        this._dispatchActions();
+        this._syncActions();
 
         for (let f = 0; f < 5; f++) {
             playTone(0.5);
@@ -181,42 +154,16 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
             await sleep(200);
         }
 
-        this.dispatchEvent(new CustomEvent(PUZZLE_COMPLETE, { bubbles: true, composed: true }));
+        this._sendComplete();
     }
 
-    private _dispatchStatus(): void {
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_STATUS, {
-                detail: { moves: this._totalMoves, optimal: this._optimal },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    private _dispatchActions(): void {
-        const buttons: ActionButton[] = this._playing
-            ? []
-            : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
-        this.dispatchEvent(
-            new CustomEvent(PUZZLE_ACTIONS, {
-                detail: buttons,
-                bubbles: true,
-                composed: true,
-            }),
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
         );
     }
 
