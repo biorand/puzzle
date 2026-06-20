@@ -1,9 +1,9 @@
 import { html, LitElement } from 'lit';
 import { state } from 'lit/decorators.js';
 import { playTone } from '../audio';
-import { sleep } from './shared';
-import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
 import type { ActionButton, PuzzleLitElement } from '../types';
+import { PUZZLE_ACTIONS, PUZZLE_COMPLETE, PUZZLE_REGENERATE, PUZZLE_STATUS } from '../types';
+import { sleep } from './shared';
 
 const TOGGLES: number[][] = [
     [0, 1],
@@ -144,7 +144,9 @@ export class PuzzleStagla extends LitElement implements PuzzleLitElement {
             await sleep(200);
         }
 
-        this._completedStages[this._stage] = true;
+        const nextCompleted = [...this._completedStages];
+        nextCompleted[this._stage] = true;
+        this._completedStages = nextCompleted;
 
         if (this._stage === 2) {
             await this._completePuzzle();
