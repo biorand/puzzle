@@ -131,7 +131,12 @@ describe('puzzle-stagla', () => {
         const stageInitialStates = (el as any)._stageInitialStates as boolean[][];
         const stageTargets = (el as any)._stageTargets as number[];
 
-        const TOGGLES: number[][] = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3]];
+        const TOGGLES: number[][] = [
+            [0, 1],
+            [0, 1, 2],
+            [1, 2, 3],
+            [2, 3],
+        ];
 
         // Brute-force the solution for a given stage's lights and target
         function solveStage(lights: boolean[], target: number): number[] {
@@ -175,7 +180,7 @@ describe('puzzle-stagla', () => {
 
             // Wait for stage completion to process (sleep is mocked to resolve instantly)
             await el.updateComplete;
-            await new Promise(r => setTimeout(r, 0));
+            await new Promise((r) => setTimeout(r, 0));
 
             const circles = el.querySelectorAll('.stagla-circle');
             for (let c = 0; c <= stage; c++) {

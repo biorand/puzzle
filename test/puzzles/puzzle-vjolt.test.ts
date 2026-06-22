@@ -74,7 +74,7 @@ describe('puzzle-vjolt', () => {
         await el.updateComplete;
 
         const bottles = el.querySelectorAll('.vjolt-workbench .vjolt-bottle');
-        const filledBottles = Array.from(bottles).filter(b => !b.classList.contains('empty'));
+        const filledBottles = Array.from(bottles).filter((b) => !b.classList.contains('empty'));
         expect(filledBottles.length).toBe(1);
 
         document.body.removeChild(el);

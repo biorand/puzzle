@@ -155,10 +155,9 @@ describe('puzzle-keypad', () => {
                 orange.length,
                 `iteration ${iter}: expected 1–8 orange cells, got ${orange.length}`,
             ).toBeGreaterThan(0);
-            expect(
-                orange.length,
-                `iteration ${iter}: puzzle should not start solved`,
-            ).toBeLessThan(9);
+            expect(orange.length, `iteration ${iter}: puzzle should not start solved`).toBeLessThan(
+                9,
+            );
         }
     });
 

@@ -27,10 +27,13 @@ test.describe('Lab Circuit Puzzle', () => {
             const state = el._rawState;
             const powered = el._powered;
             if (!state) return { count: -1, total: -1 };
-            const total = state.receivers.length;
+            let total = 0;
             let count = 0;
-            for (const r of state.receivers) {
-                if (powered.has(r)) count++;
+            for (let i = 0; i < state.nodes.length; i++) {
+                if (state.nodes[i].kind === 'receiver') {
+                    total++;
+                    if (powered.has(i)) count++;
+                }
             }
             return { count, total };
         });
@@ -105,68 +108,53 @@ test.describe('Lab Circuit Puzzle', () => {
     test('solving shows COMPLETED overlay', async ({ page }) => {
         await page.waitForTimeout(1000);
 
-        // Compute solve plan and get graph coordinates
+        // Use the real calculatePower to find the optimal solution
         const solveInfo = await page.evaluate(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            const raw = el._rawState;
+            const state = el._rawState;
             const graph = el._graph;
-            if (!raw || !graph) return null;
+            if (!state || !graph) return null;
 
-            const R = raw.ringCount;
-            const PORTS = ['I', 'A', 'O', 'B'];
-            const CP = [1, 3, 5, 7];
-            const BJ: Record<string, [number, number][]> = {
-                T: [[0, 1], [0, 3], [1, 3]], L: [[0, 1]], diag: [[0, 1], [2, 3]],
-            };
-            function cp(type: string, rot: number): [string, string][] {
-                return BJ[type].map(([a, b]) => [PORTS[(a - rot + 4) % 4], PORTS[(b - rot + 4) % 4]]);
-            }
-            function pn(ring: number, cpos: number, port: string): string {
-                if (port === 'A') return `${ring},${(cpos + 1) % 8}`;
-                if (port === 'B') return `${ring},${(cpos + 7) % 8}`;
-                if (port === 'I') return ring >= R - 1 ? 'center' : `${ring + 1},${cpos}`;
-                return ring <= 0 ? 'source' : `${ring - 1},${cpos}`;
-            }
-            function sim(rots: number[]): Set<string> {
-                const adj = new Map<string, string[]>();
-                function ae(a: string, b: string) {
-                    if (!adj.has(a)) adj.set(a, []); if (!adj.has(b)) adj.set(b, []);
-                    adj.get(a)!.push(b); adj.get(b)!.push(a);
-                }
-                for (let r = 0; r < R; r++) {
-                    for (let p = 0; p < 8; p++) if (raw.segments[r] & (1 << p)) ae(`${r},${p}`, `${r},${(p + 1) % 8}`);
-                    for (let ci = 0; ci < 4; ci++) for (const [p1, p2] of cp(raw.connectors[r][ci].type, rots[r])) ae(pn(r, CP[ci], p1), pn(r, CP[ci], p2));
-                }
-                ae('source', '0,1');
-                const v = new Set<string>(), q = ['source']; v.add('source');
-                while (q.length) { const c = q.shift()!; for (const nb of adj.get(c) || []) if (!v.has(nb)) { v.add(nb); q.push(nb); } }
-                return v;
-            }
-            function isS(p: Set<string>): boolean { for (const r of raw.receivers) if (!p.has(r)) return false; return true; }
-
+            const R = state.ringCount;
             const total = 1 << (2 * R);
-            let best: number[] | null = null, bestT = Infinity;
+            let best: number[] | null = null;
+            let bestClicks = Infinity;
+
             for (let i = 0; i < total; i++) {
-                const rots: number[] = []; let tmp = i, clicks = 0;
-                for (let r = 0; r < R; r++) { rots.push(tmp & 3); clicks += tmp & 3; tmp >>= 2; }
-                if (clicks >= bestT) continue;
-                if (isS(sim(rots))) { bestT = clicks; best = rots; }
+                const rots: number[] = [];
+                let tmp = i;
+                let clicks = 0;
+                for (let r = 0; r < R; r++) {
+                    rots.push(tmp & 3);
+                    clicks += tmp & 3;
+                    tmp >>= 2;
+                }
+                if (clicks >= bestClicks) continue;
+
+                const powered = el._calculatePower(state, rots);
+                let ok = true;
+                for (let ni = 0; ni < state.nodes.length; ni++) {
+                    if (state.nodes[ni].kind === 'receiver' && !powered.has(ni)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    bestClicks = clicks;
+                    best = rots;
+                }
             }
             if (!best) return null;
 
-            // Get junction positions from graph (canvas-relative)
-            const canvas = document.querySelector('#lab-circuit-canvas') as HTMLCanvasElement;
-            const junctions = graph.nodes.filter((n: any) => n.type === 'junction');
+            // Build click plan — click any junction in each ring for each required rotation
             const clickPlan: Array<{ x: number; y: number }> = [];
             for (let ring = 0; ring < R; ring++) {
-                const jNodes = junctions.filter((j: any) => j.id.startsWith(`j${ring}_`));
                 for (let c = 0; c < best[ring]; c++) {
-                    if (jNodes.length > 0) {
-                        clickPlan.push({ x: jNodes[0].x, y: jNodes[0].y });
-                    }
+                    const jNode = graph.nodes.find((n: any) => n.ring === ring);
+                    if (jNode) clickPlan.push({ x: jNode.x, y: jNode.y });
                 }
             }
-            return { clickPlan, ringCount: R };
+            return { clickPlan };
         });
 
         expect(solveInfo).not.toBeNull();

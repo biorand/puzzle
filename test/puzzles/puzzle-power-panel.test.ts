@@ -94,13 +94,20 @@ describe('puzzle-power-panel', () => {
             const afterUp = needle + vals[i].x;
             const afterDown = needle - vals[i].y;
             if (afterUp === target) {
-                seq.push('up'); needle = afterUp;
+                seq.push('up');
+                needle = afterUp;
             } else if (afterDown === target) {
-                seq.push('down'); needle = afterDown;
-            } else if (afterUp <= 100 && (afterDown < 0 || Math.abs(afterUp - target) <= Math.abs(afterDown - target))) {
-                seq.push('up'); needle = afterUp;
+                seq.push('down');
+                needle = afterDown;
+            } else if (
+                afterUp <= 100 &&
+                (afterDown < 0 || Math.abs(afterUp - target) <= Math.abs(afterDown - target))
+            ) {
+                seq.push('up');
+                needle = afterUp;
             } else {
-                seq.push('down'); needle = afterDown;
+                seq.push('down');
+                needle = afterDown;
             }
         }
 

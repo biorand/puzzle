@@ -10,9 +10,15 @@ vi.mock('../../src/audio', () => ({
 
 if (typeof ResizeObserver === 'undefined') {
     class FakeResizeObserver {
-        observe() { /* noop */ }
-        unobserve() { /* noop */ }
-        disconnect() { /* noop */ }
+        observe() {
+            /* noop */
+        }
+        unobserve() {
+            /* noop */
+        }
+        disconnect() {
+            /* noop */
+        }
     }
     (globalThis as unknown as Record<string, unknown>).ResizeObserver = FakeResizeObserver;
 }
