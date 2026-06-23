@@ -87,13 +87,13 @@ const BASE_CONN: Record<string, [number, number][]> = {
     ],
 };
 const RING_BAND = 12;
-const RING_GAP = 10;
+const RING_GAP = 14;
 const BOARD_PAD = 10;
 const SCALE = 0.8125;
 const MAX_R = 4;
-const JUNC_RADIUS = 7;
+const JUNC_RADIUS = (RING_BAND + RING_GAP) / 3;
 const RECEIVER_RADIUS = 9;
-const RING_COUNT_MIN = 3;
+const RING_COUNT_MIN = 2;
 const RING_COUNT_MAX = 4;
 const RECEIVER_MIN = 2;
 const RECEIVER_MAX = 6;
@@ -431,7 +431,13 @@ function generatePuzzleState(): PuzzleState | null {
                 const cpos = CONN_POS[ci];
                 const jType = JUNC_TYPES[(Math.random() * 3) | 0];
                 const i = nodes.length;
-                nodes.push({ kind: 'junction', ring: r, jType, x: pos[cpos].x, y: pos[cpos].y });
+                nodes.push({
+                    kind: 'junction',
+                    ring: r,
+                    jType,
+                    x: pos[cpos].x,
+                    y: pos[cpos].y,
+                });
                 idxMap.set(`${r},${cpos}`, i);
             }
         }
@@ -439,12 +445,13 @@ function generatePuzzleState(): PuzzleState | null {
         const centerIdx = nodes.length;
         nodes.push({ kind: 'receiver', x: 0, y: 0 });
 
+        const r0p0 = ringPositions(0)[0];
         const r0p1 = ringPositions(0)[1];
         const cornerNodeIdx = nodes.length;
         const sourceIdx = nodes.length + 1;
         nodes.push(
-            { kind: 'node', x: r0p1.x, y: r0p1.y - 12 },
-            { kind: 'source', x: r0p1.x, y: r0p1.y - 24 },
+            { kind: 'node', x: r0p1.x, y: r0p0.y - 16 },
+            { kind: 'source', x: r0p0.x, y: r0p0.y - 16 },
         );
 
         // Ring segments
@@ -476,8 +483,11 @@ function generatePuzzleState(): PuzzleState | null {
             }
         }
 
-        // Center connections (innermost ring → center)
-        for (const cpos of CONN_POS) {
+        // Center connections (2-4 of the innermost CONN_POS, variable count)
+        const shuffledConn = shuffle([...CONN_POS]);
+        const centerConnCount = 2 + ((Math.random() * 3) | 0); // 2-4
+        const centerConns = shuffledConn.slice(0, centerConnCount);
+        for (const cpos of centerConns) {
             const jIdx = idxMap.get(`${rc - 1},${cpos}`)!;
             edges.push({
                 from: jIdx,
@@ -487,7 +497,7 @@ function generatePuzzleState(): PuzzleState | null {
             });
         }
 
-        // Source → power_corner → ring 0 position 1
+        // Source → power_corner → ring 0 position 1 (top-middle connector)
         edges.push(
             {
                 from: sourceIdx,
@@ -511,7 +521,7 @@ function generatePuzzleState(): PuzzleState | null {
         const selected = new Set(shuffle(cornerIdxs).slice(0, Math.min(target, cornerIdxs.length)));
         selected.add(centerIdx);
         for (const i of selected) {
-            const n = nodes[i];
+            const n = nodes[i]!;
             nodes[i] = { kind: 'receiver', x: n.x, y: n.y };
         }
 
@@ -595,8 +605,8 @@ function buildGraph(state: PuzzleState, size: number): CircuitGraph {
 
 // ── Render colors ──
 
-const CO = '#22cc44';
-const CD = '#1a4a2a';
+const CO = '#14812d';
+const CD = '#0f3d1e';
 const CX = '#333';
 
 // ── Lit Element ──
@@ -727,7 +737,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
             ctx.lineWidth = isP ? 2.5 : 1.5;
             if (isP) {
                 ctx.shadowColor = CO;
-                ctx.shadowBlur = 6;
+                ctx.shadowBlur = 4;
             } else {
                 ctx.setLineDash([4, 4]);
                 ctx.shadowBlur = 0;
@@ -755,8 +765,8 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                     ctx.shadowColor = CO;
                     ctx.stroke();
                     ctx.shadowBlur = 0;
-                    ctx.fillStyle = isP ? CO : '#555';
-                    ctx.font = 'bold 12px monospace';
+                    ctx.fillStyle = CO;
+                    ctx.font = '10px monospace';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.shadowBlur = isP ? 6 : 0;
@@ -769,10 +779,10 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                     const ring = n.ring!;
                     const isHovered = ring >= 0 && ring === this._hoveredRing;
                     ctx.fillStyle = isP ? '#1a3a2a' : '#1a1a1a';
-                    ctx.strokeStyle = isHovered ? '#66ff99' : isP ? CO : CX;
-                    ctx.lineWidth = (isP ? 2 : 1) + (isHovered ? 2 : 0);
-                    ctx.shadowBlur = isHovered ? 12 : isP ? 6 : 0;
-                    ctx.shadowColor = '#66ff99';
+                    ctx.strokeStyle = isHovered ? '#48b46c' : isP ? CO : CX;
+                    ctx.lineWidth = (isP ? 2 : 1);
+                    ctx.shadowBlur = 0;
+                    ctx.shadowColor = '#48b46c';
                     ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
                     ctx.strokeRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
                     ctx.shadowBlur = 0;
@@ -795,10 +805,9 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                             ctx.moveTo(pa.x, pa.y);
                             ctx.lineTo(pb.x, pb.y);
                             ctx.strokeStyle = pairPowered ? CO : CD;
-                            ctx.lineWidth = pairPowered ? 2.5 : 1.5;
+                            ctx.lineWidth = 1.5;
                             if (pairPowered) {
                                 ctx.shadowColor = CO;
-                                ctx.shadowBlur = 6;
                             }
                             ctx.stroke();
                             ctx.shadowBlur = 0;
@@ -827,8 +836,8 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                                 n.y + (dy / mag) * n.r * 0.75,
                             );
                             ctx.strokeStyle = stubP ? CO : CD;
-                            ctx.lineWidth = isHovered ? 3 : stubP ? 2.5 : 1.5;
-                            ctx.shadowBlur = isHovered ? 8 : stubP ? 6 : 0;
+                            ctx.lineWidth = 1.5;
+                            ctx.shadowBlur = 0;
                             ctx.shadowColor = '#66ff99';
                             ctx.stroke();
                             ctx.shadowBlur = 0;
@@ -837,14 +846,14 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                     break;
                 }
                 case 'power':
-                    ctx.fillStyle = '#1a3a2a';
+                    ctx.fillStyle = '#0f3d1e';
                     ctx.strokeStyle = CO;
                     ctx.lineWidth = 1.5;
-                    ctx.fillRect(n.x - 31, n.y - 8, 62, 16);
-                    ctx.strokeRect(n.x - 31, n.y - 8, 62, 16);
+                    ctx.fillRect(n.x - 28, n.y - 8, 56, 16);
+                    ctx.strokeRect(n.x - 28, n.y - 8, 56, 16);
                     ctx.fillStyle = CO;
                     ctx.shadowColor = CO;
-                    ctx.shadowBlur = 4;
+                    ctx.shadowBlur = 1;
                     ctx.font = 'bold 10px monospace';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
@@ -858,7 +867,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         let count = 0;
         for (const r of this._graph.receivers) if (this._powered.has(r)) count++;
         ctx.fillStyle = CO;
-        ctx.font = 'bold 12px monospace';
+        ctx.font = '14px "Noto Sans Symbols"';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
         ctx.shadowBlur = 10;
@@ -906,6 +915,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     private _onCanvasClick(_e: MouseEvent): void {
         if (this._playing || this._completionAnimating || !this._graph || !this._canvas) return;
         if (this._hoveredRing < 0) return;
+        if (this._rawState && isSolved(this._rawState, this._powered)) return;
         this._rotateRing(this._hoveredRing);
     }
 
@@ -915,6 +925,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         this._moves++;
         playTone(Math.min(this._moves / Math.max(this._optimal, 1), 1));
         this._simulateAndRender();
+        this._dispatchStatus();
         if (this._rawState && isSolved(this._rawState, this._powered))
             setTimeout(() => this._completePuzzle(), 400);
     }
