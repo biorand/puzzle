@@ -126,4 +126,49 @@ test.describe('Run Mode', () => {
     // Should have advanced to next config
     await expect(page.locator('.run-info-item').first()).toContainText('Config 2/3');
   });
+
+  test('restart keeps footer toolbar visible (does not disappear)', async ({ page }) => {
+    // This tests the bug where clicking back → restart causes the bottom
+    // toolbar (app-footer with action buttons) to disappear because the
+    // puzzle key doesn't change when no puzzles have been solved, so the
+    // puzzle is not remounted and _syncActions() is never called again.
+    await page.goto('/');
+    await page.evaluate(() => (location.hash = '#/run/random'));
+    await page.waitForTimeout(1500);
+
+    const runHost = page.locator('run-host');
+    await expect(runHost).toBeVisible();
+
+    // Footer should be visible with Reset button before restart
+    const footer = page.locator('run-host app-footer');
+    await expect(footer).toBeVisible();
+    const btns = footer.locator('button');
+    await expect(btns).toHaveCount(4);
+
+    // Click back to open quit dialog
+    await page.locator('#back-btn').click();
+    await expect(page.locator('.run-quit-dialog')).toBeVisible();
+
+    // Click Restart
+    await page.locator('.run-quit-btn').filter({ hasText: 'Restart' }).click();
+    await page.waitForTimeout(500);
+
+    // After restart, the footer should still be visible with active buttons
+    await expect(footer).toBeVisible();
+    const btnsAfter = footer.locator('button');
+
+    // The Reset button (4th slot) should have a handler (not disabled)
+    await expect(btnsAfter.nth(3)).not.toBeDisabled();
+
+    // Making a move should still work and update the display
+    const cell = page.locator('.cell').first();
+    await cell.click();
+    await page.waitForTimeout(200);
+    await expect(page.locator('.run-info-bar-bottom')).toContainText('Moves: 1');
+
+    // Reset button should still work
+    await btnsAfter.nth(3).click();
+    await page.waitForTimeout(200);
+    await expect(page.locator('.run-info-bar-bottom')).toContainText('Moves: 0');
+  });
 });

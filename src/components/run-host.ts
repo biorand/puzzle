@@ -100,7 +100,7 @@ export class RunHost extends LitElement {
         this._configs = this._buildConfigs();
         this._results = [];
         this._currentConfigIdx = 0;
-        this._puzzleKey = 0;
+        this._puzzleKey++;
         this._runStartTime = Date.now();
         this._puzzleStartTime = Date.now();
         this._timer = 0;
