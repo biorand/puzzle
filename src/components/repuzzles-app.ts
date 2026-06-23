@@ -303,14 +303,14 @@ export class RepuzzlesApp extends LitElement {
         const extra =
             this._activePuzzleId === 'keypad'
                 ? html`.tutorialStep=${this._activeTutorialStep}
-                  .forceDifficulty=${this._activeForceDifficulty}
-                  @cheat-unlock-all=${this._onCheatUnlock}`
+                  .forceDifficulty=${this._activeForceDifficulty}`
                 : nothing;
         return html`
             <${tag}
                 @puzzle-status=${this._onPuzzleStatus}
                 @puzzle-actions=${this._onPuzzleActions}
                 @puzzle-complete=${this._onPuzzleComplete}
+                @cheat-unlock-all=${this._onCheatUnlock}
                 ${extra}
             ></${tag}>`;
     }
