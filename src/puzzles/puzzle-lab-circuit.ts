@@ -57,6 +57,7 @@ interface GNode {
 }
 interface GEdge {
     id: string;
+    idx: number;
     a: string;
     aDir: Dir;
     b: string;
@@ -161,16 +162,68 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ── Core simulation ──
 
-export function calculatePower(state: PuzzleState, rots: number[]): Set<number> {
-    const adj = new Map<number, Set<number>>();
-    for (const e of state.edges) {
-        if (!adj.has(e.from)) adj.set(e.from, new Set());
-        if (!adj.has(e.to)) adj.set(e.to, new Set());
-        adj.get(e.from)!.add(e.to);
-        adj.get(e.to)!.add(e.from);
-    }
+// Result of a full power simulation: which nodes are energized, and which
+// original (physical) edges actually carry power. The edge set is the single
+// source of truth used by rendering so the visuals always match the logic.
+export interface PowerResult {
+    powered: Set<number>;
+    poweredEdges: Set<number>;
+    visitedEdges: Set<number>;
+}
 
-    // Build port-to-neighbor lookup: "nodeIdx,Dir" → neighbor indices
+// For a diag junction, return the partner direction of `dir` under `rot`
+// (the other end of the internal pair the port belongs to), or null.
+function diagPartnerDir(rot: number, dir: Dir): Dir | null {
+    for (const [a, b] of activePairs('diag', rot)) {
+        if (a === dir) return b;
+        if (b === dir) return a;
+    }
+    return null;
+}
+
+// Decide whether a junction's physical stub in direction `dir` conducts power,
+// given the final powered-node set. For diag this depends on its pairing.
+function junctionStubConducts(
+    nodeIdx: number,
+    node: JunctionNode,
+    dir: Dir,
+    powered: Set<number>,
+    rots: number[],
+    portMap: Map<string, number[]>,
+): boolean {
+    if (node.jType !== 'diag') {
+        // T/L hub: the stub conducts iff the junction is energized and the
+        // port is one of the active ports of the hub.
+        return powered.has(nodeIdx) && activeDirs(node.jType, rots[node.ring]).includes(dir);
+    }
+    // diag: the stub on `dir` belongs to a pair (dir, partner). The pair channel
+    // is energized iff a neighbor on either end of the pair is powered.
+    const partner = diagPartnerDir(rots[node.ring], dir);
+    const onDir = portMap.get(`${nodeIdx},${dir}`) || [];
+    if (onDir.some((nb) => powered.has(nb))) return true;
+    if (partner) {
+        const onPartner = portMap.get(`${nodeIdx},${partner}`) || [];
+        if (onPartner.some((nb) => powered.has(nb))) return true;
+    }
+    return false;
+}
+
+// Whether one endpoint of an edge conducts power into/out of the edge.
+function endpointConducts(
+    nodeIdx: number,
+    node: PuzzleNode,
+    dir: Dir,
+    powered: Set<number>,
+    rots: number[],
+    portMap: Map<string, number[]>,
+): boolean {
+    if (node.kind !== 'junction') {
+        return powered.has(nodeIdx);
+    }
+    return junctionStubConducts(nodeIdx, node, dir, powered, rots, portMap);
+}
+
+function buildPortMap(state: PuzzleState): Map<string, number[]> {
     const portMap = new Map<string, number[]>();
     for (const e of state.edges) {
         const ka = `${e.from},${e.fromPort}`;
@@ -180,6 +233,52 @@ export function calculatePower(state: PuzzleState, rots: number[]): Set<number> 
         if (!portMap.has(kb)) portMap.set(kb, []);
         portMap.get(kb)!.push(e.from);
     }
+    return portMap;
+}
+
+export function isEdgePowered(
+    edge: Edge,
+    state: PuzzleState,
+    powered: Set<number>,
+    rots: number[],
+): boolean {
+    const portMap = buildPortMap(state);
+    return (
+        endpointConducts(
+            edge.from,
+            state.nodes[edge.from],
+            edge.fromPort,
+            powered,
+            rots,
+            portMap,
+        ) && endpointConducts(edge.to, state.nodes[edge.to], edge.toPort, powered, rots, portMap)
+    );
+}
+
+// Whether a junction's internal stub in a given direction should render as
+// energized. Used by the canvas to keep junction graphics consistent with the
+// physical-edge power state.
+export function isJunctionStubPowered(
+    state: PuzzleState,
+    nodeIdx: number,
+    dir: Dir,
+    powered: Set<number>,
+    rots: number[],
+): boolean {
+    const node = state.nodes[nodeIdx];
+    if (node.kind !== 'junction') return false;
+    return junctionStubConducts(nodeIdx, node, dir, powered, rots, buildPortMap(state));
+}
+
+export function calculatePowerResult(state: PuzzleState, rots: number[]): PowerResult {
+    const adj = new Map<number, Set<number>>();
+    for (let i = 0; i < state.nodes.length; i++) adj.set(i, new Set());
+    for (const e of state.edges) {
+        adj.get(e.from)!.add(e.to);
+        adj.get(e.to)!.add(e.from);
+    }
+
+    const portMap = buildPortMap(state);
 
     const edgeMap = new Map<string, Edge>();
     for (const e of state.edges) {
@@ -227,19 +326,47 @@ export function calculatePower(state: PuzzleState, rots: number[]): Set<number> 
     }
 
     const sourceIdx = state.nodes.findIndex((n) => n.kind === 'source');
-    const visited = new Set<number>();
-    const queue = [sourceIdx];
-    visited.add(sourceIdx);
-    while (queue.length) {
-        const cur = queue.shift()!;
-        for (const nb of adj.get(cur) || []) {
-            if (!visited.has(nb)) {
-                visited.add(nb);
-                queue.push(nb);
+    const powered = new Set<number>();
+    if (sourceIdx >= 0) {
+        const queue = [sourceIdx];
+        powered.add(sourceIdx);
+        while (queue.length) {
+            const cur = queue.shift()!;
+            for (const nb of adj.get(cur) || []) {
+                if (!powered.has(nb)) {
+                    powered.add(nb);
+                    queue.push(nb);
+                }
             }
         }
     }
-    return visited;
+
+    // Derive powered physical edges from the final node set. An edge carries
+    // power iff both of its endpoints conduct into the wire.
+    const poweredEdges = new Set<number>();
+    for (let ei = 0; ei < state.edges.length; ei++) {
+        const e = state.edges[ei];
+        const a = endpointConducts(e.from, state.nodes[e.from], e.fromPort, powered, rots, portMap);
+        const b = endpointConducts(e.to, state.nodes[e.to], e.toPort, powered, rots, portMap);
+        if (a && b) poweredEdges.add(ei);
+    }
+
+    // Visited edges: power reaches at least one endpoint. This includes edges
+    // where the far side is a junction with a blocked port — the wire itself is
+    // energized even if the junction can't pass the power through.
+    const visitedEdges = new Set<number>();
+    for (let ei = 0; ei < state.edges.length; ei++) {
+        const e = state.edges[ei];
+        const a = endpointConducts(e.from, state.nodes[e.from], e.fromPort, powered, rots, portMap);
+        const b = endpointConducts(e.to, state.nodes[e.to], e.toPort, powered, rots, portMap);
+        if (a || b) visitedEdges.add(ei);
+    }
+
+    return { powered, poweredEdges, visitedEdges };
+}
+
+export function calculatePower(state: PuzzleState, rots: number[]): Set<number> {
+    return calculatePowerResult(state, rots).powered;
 }
 
 function solveOptimal(state: PuzzleState): number[] | null {
@@ -446,9 +573,11 @@ function buildGraph(state: PuzzleState, size: number): CircuitGraph {
         });
     }
 
-    for (const e of pEdges) {
+    for (let ei = 0; ei < pEdges.length; ei++) {
+        const e = pEdges[ei];
         edges.push({
             id: eid(),
+            idx: ei,
             a: String(e.from),
             aDir: e.fromPort,
             b: String(e.to),
@@ -480,6 +609,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     @state() private _playing = false;
     @state() private _rotations: number[] = [];
     @state() private _powered: Set<number> = new Set();
+    @state() private _poweredEdges: Set<number> = new Set();
 
     private _graph: CircuitGraph | null = null;
     private _rawState: PuzzleState | null = null;
@@ -544,9 +674,9 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     private _getCanvasSize(): number {
         return this._canvas
             ? Math.min(
-                  this._canvas.getBoundingClientRect().width,
-                  this._canvas.getBoundingClientRect().height,
-              )
+                this._canvas.getBoundingClientRect().width,
+                this._canvas.getBoundingClientRect().height,
+            )
             : 400;
     }
 
@@ -558,11 +688,13 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         if (!this._rawState) return;
         const sz = this._getCanvasSize();
         this._graph = buildGraph(this._rawState, sz);
-        this._powered = calculatePower(this._rawState, this._rotations);
+        const result = calculatePowerResult(this._rawState, this._rotations);
+        this._powered = result.powered;
+        this._poweredEdges = result.visitedEdges;
         this.requestUpdate();
     }
 
-    private _onCanvasReady(_e: Event): void {
+    private _onCanvasReady(e: Event): void {
         this._canvas = e.target as HTMLCanvasElement;
         this._ctx = this._canvas.getContext('2d');
         this._drawCanvas();
@@ -587,7 +719,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
             if (!nA || !nB) continue;
             const p1 = portCoord(nA, e.aDir);
             const p2 = portCoord(nB, e.bDir);
-            const isP = this._isGraphNodePowered(e.a) && this._isGraphNodePowered(e.b);
+            const isP = this._isEdgePowered(e);
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
@@ -646,37 +778,44 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                     ctx.shadowBlur = 0;
                     if (n.jType === 'diag') {
                         const pairs = activePairs(n.jType, this._rotations[ring]);
-                        for (let p = 0; p < pairs.length; p++) {
-                            const [dirA, dirB] = pairs[p];
+                        const jIdx = +n.id;
+                        for (const [dirA, dirB] of pairs) {
                             const pa = portCoord(n, dirA);
                             const pb = portCoord(n, dirB);
-                            const len = n.r * 0.65;
-                            const off = (p === 0 ? 1 : -1) * n.r * 0.2;
-                            const dxA = pa.x - n.x;
-                            const dyA = pa.y - n.y;
-                            const dxB = pb.x - n.x;
-                            const dyB = pb.y - n.y;
-                            const magA = Math.abs(dxA) + Math.abs(dyA);
-                            const magB = Math.abs(dxB) + Math.abs(dyB);
+                            const pairPowered =
+                                !!this._rawState &&
+                                isJunctionStubPowered(
+                                    this._rawState,
+                                    jIdx,
+                                    dirA,
+                                    this._powered,
+                                    this._rotations,
+                                );
                             ctx.beginPath();
-                            ctx.moveTo(
-                                n.x + (dxA / magA) * len + off,
-                                n.y + (dyA / magA) * len + off,
-                            );
-                            ctx.lineTo(
-                                n.x + (dxB / magB) * len + off,
-                                n.y + (dyB / magB) * len + off,
-                            );
-                            ctx.strokeStyle = isP ? CO : CD;
-                            ctx.lineWidth = isHovered ? 3 : isP ? 2.5 : 1.5;
-                            ctx.shadowBlur = isHovered ? 8 : isP ? 6 : 0;
-                            ctx.shadowColor = '#66ff99';
+                            ctx.moveTo(pa.x, pa.y);
+                            ctx.lineTo(pb.x, pb.y);
+                            ctx.strokeStyle = pairPowered ? CO : CD;
+                            ctx.lineWidth = pairPowered ? 2.5 : 1.5;
+                            if (pairPowered) {
+                                ctx.shadowColor = CO;
+                                ctx.shadowBlur = 6;
+                            }
                             ctx.stroke();
                             ctx.shadowBlur = 0;
                         }
                     } else {
+                        const jIdx = +n.id;
                         const dirs = activeDirs(n.jType!, this._rotations[ring]);
                         for (const dir of dirs) {
+                            const stubP =
+                                !!this._rawState &&
+                                isJunctionStubPowered(
+                                    this._rawState,
+                                    jIdx,
+                                    dir,
+                                    this._powered,
+                                    this._rotations,
+                                );
                             const pt = portCoord(n, dir);
                             const dx = pt.x - n.x;
                             const dy = pt.y - n.y;
@@ -687,9 +826,9 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                                 n.x + (dx / mag) * n.r * 0.75,
                                 n.y + (dy / mag) * n.r * 0.75,
                             );
-                            ctx.strokeStyle = isP ? CO : CD;
-                            ctx.lineWidth = isHovered ? 3 : isP ? 2.5 : 1.5;
-                            ctx.shadowBlur = isHovered ? 8 : isP ? 6 : 0;
+                            ctx.strokeStyle = stubP ? CO : CD;
+                            ctx.lineWidth = isHovered ? 3 : stubP ? 2.5 : 1.5;
+                            ctx.shadowBlur = isHovered ? 8 : stubP ? 6 : 0;
                             ctx.shadowColor = '#66ff99';
                             ctx.stroke();
                             ctx.shadowBlur = 0;
@@ -730,6 +869,10 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
 
     private _isGraphNodePowered(graphId: string): boolean {
         return this._powered.has(+graphId);
+    }
+
+    private _isEdgePowered(e: GEdge): boolean {
+        return this._poweredEdges.has(e.idx);
     }
 
     private _onCanvasMove(e: MouseEvent): void {
@@ -807,19 +950,19 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         const b: ActionButton[] = this._playing
             ? []
             : [
-                  {
-                      label: 'New Puzzle',
-                      handler: () => {
-                          if (!this._playing) this._generatePuzzle();
-                      },
-                  },
-                  {
-                      label: 'Reset',
-                      handler: () => {
-                          if (!this._playing) this._resetPuzzle();
-                      },
-                  },
-              ];
+                {
+                    label: 'New Puzzle',
+                    handler: () => {
+                        if (!this._playing) this._generatePuzzle();
+                    },
+                },
+                {
+                    label: 'Reset',
+                    handler: () => {
+                        if (!this._playing) this._resetPuzzle();
+                    },
+                },
+            ];
         this.dispatchEvent(
             new CustomEvent(PUZZLE_ACTIONS, { detail: b, bubbles: true, composed: true }),
         );
