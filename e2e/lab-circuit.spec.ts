@@ -19,18 +19,18 @@ test.describe('Lab Circuit Puzzle', () => {
 
         await page.waitForFunction(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            return el && el._rawState;
+            return el && el._circuitState;
         }, { timeout: 10000 });
 
         const counterText = await page.evaluate(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            const state = el._rawState;
+            const state = el._circuitState;
             const powered = el._powered;
             if (!state) return { count: -1, total: -1 };
             let total = 0;
             let count = 0;
             for (let i = 0; i < state.nodes.length; i++) {
-                if (state.nodes[i].kind === 'socket') {
+                if (state.nodes[i].constructor.name === 'Socket') {
                     total++;
                     if (powered.has(i)) count++;
                 }
@@ -87,7 +87,7 @@ test.describe('Lab Circuit Puzzle', () => {
 
         const before = await page.evaluate(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            const state = el._rawState;
+            const state = el._circuitState;
             return { rc: state ? state.ringCount : 0 };
         });
 
@@ -100,7 +100,7 @@ test.describe('Lab Circuit Puzzle', () => {
 
         const after = await page.evaluate(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            return { moves: el._moves, rc: (el._rawState || {}).ringCount };
+            return { moves: el._moves, rc: (el._circuitState || {}).ringCount };
         });
         expect(after.moves).toBe(0);
     });
@@ -111,9 +111,8 @@ test.describe('Lab Circuit Puzzle', () => {
         // Use the real calculatePower to find the optimal solution
         const solveInfo = await page.evaluate(() => {
             const el = document.querySelector('puzzle-lab-circuit') as any;
-            const state = el._rawState;
-            const graph = el._graph;
-            if (!state || !graph) return null;
+            const state = el._circuitState;
+            if (!state) return null;
 
             const R = state.ringCount;
             const total = 1 << (2 * R);
@@ -134,7 +133,7 @@ test.describe('Lab Circuit Puzzle', () => {
                 const powered = el._calculatePower(state, rots);
                 let ok = true;
                 for (let ni = 0; ni < state.nodes.length; ni++) {
-                    if (state.nodes[ni].kind === 'socket' && !powered.has(ni)) {
+                    if (state.nodes[ni].constructor.name === 'Socket' && !powered.has(ni)) {
                         ok = false;
                         break;
                     }
@@ -156,7 +155,7 @@ test.describe('Lab Circuit Puzzle', () => {
             const clickPlan: Array<{ x: number; y: number }> = [];
             for (let ring = 0; ring < R; ring++) {
                 for (let c = 0; c < best[ring]; c++) {
-                    const jNode = graph.nodes.find((n: any) => n.ring === ring);
+                    const jNode = state.nodes.find((n: any) => n.ring === ring);
                     if (jNode) clickPlan.push({ x: jNode.x * scale, y: jNode.y * scale });
                 }
             }

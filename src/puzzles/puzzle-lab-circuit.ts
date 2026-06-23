@@ -8,63 +8,27 @@ import { sleep } from './shared';
 type Dir = 'UP' | 'RIGHT' | 'DOWN' | 'LEFT';
 type JunctionType = 'T' | 'L' | 'diag';
 
-interface BaseNode {
-    x: number;
-    y: number;
-}
-interface JunctionNode extends BaseNode {
-    kind: 'junction';
-    ring: number;
-    jType: JunctionType;
-}
-interface SocketNode extends BaseNode {
-    kind: 'socket';
-}
-interface SourceNode extends BaseNode {
-    kind: 'source';
-}
-interface PlainNode extends BaseNode {
-    kind: 'node';
-}
-export type PuzzleNode = JunctionNode | SocketNode | SourceNode | PlainNode;
-
-export interface PuzzleEdge {
+export interface Edge {
+    idx: number;
     from: number;
     fromPort: Dir;
     to: number;
     toPort: Dir;
 }
 
-export interface PuzzleState {
-    nodes: PuzzleNode[];
-    edges: PuzzleEdge[];
+export interface CircuitState {
+    nodes: Node[];
+    edges: Edge[];
     ringCount: number;
     optimal: number;
     virtualSize: number;
 }
 
-export interface Edge {
-    id: string;
-    idx: number;
-    a: string;
-    aDir: Dir;
-    b: string;
-    bDir: Dir;
-}
-
 export interface DrawContext {
     hoveredRing: number;
     rotations: number[];
-    rawState: PuzzleState | null;
+    portMap: Map<string, number[]>;
     powered: Set<number>;
-}
-
-export interface CircuitGraph {
-    nodes: Node[];
-    edges: Edge[];
-    sockets: number[];
-    ringCount: number;
-    optimal: number;
 }
 
 export interface PowerResult {
@@ -178,31 +142,6 @@ function junctionStubConducts(
     return false;
 }
 
-function endpointConducts(
-    nodeIdx: number,
-    node: PuzzleNode,
-    dir: Dir,
-    powered: Set<number>,
-    rots: number[],
-    portMap: Map<string, number[]>,
-): boolean {
-    if (node.kind !== 'junction') return powered.has(nodeIdx);
-    return junctionStubConducts(nodeIdx, node.jType, node.ring, dir, powered, rots, portMap);
-}
-
-function buildPortMap(state: PuzzleState): Map<string, number[]> {
-    const portMap = new Map<string, number[]>();
-    for (const e of state.edges) {
-        const ka = `${e.from},${e.fromPort}`;
-        if (!portMap.has(ka)) portMap.set(ka, []);
-        portMap.get(ka)!.push(e.to);
-        const kb = `${e.to},${e.toPort}`;
-        if (!portMap.has(kb)) portMap.set(kb, []);
-        portMap.get(kb)!.push(e.from);
-    }
-    return portMap;
-}
-
 // ── Node class hierarchy ──
 
 export class Node {
@@ -213,7 +152,7 @@ export class Node {
         public x: number,
         public y: number,
         public radius: number,
-    ) { }
+    ) {}
 
     portCoord(dir: Dir, padding?: number): { x: number; y: number } {
         const r = this.radius + (padding ?? this._portPadding);
@@ -291,15 +230,12 @@ export class Junction extends Node {
             for (const [dirA, dirB] of pairs) {
                 const pa = this.portCoord(dirA, -2);
                 const pb = this.portCoord(dirB, -2);
-                const pairPowered =
-                    !!dctx.rawState &&
-                    isJunctionStubPowered(
-                        dctx.rawState,
-                        this.idx,
-                        dirA,
-                        dctx.powered,
-                        dctx.rotations,
-                    );
+                const pairPowered = this.conductsPower(
+                    dirA,
+                    dctx.powered,
+                    dctx.rotations,
+                    dctx.portMap,
+                );
                 ctx.beginPath();
                 ctx.moveTo(pa.x, pa.y);
                 ctx.lineTo(pb.x, pb.y);
@@ -312,15 +248,7 @@ export class Junction extends Node {
         } else {
             const dirs = activeDirs(this.jType, dctx.rotations[this.ring]);
             for (const dir of dirs) {
-                const stubP =
-                    !!dctx.rawState &&
-                    isJunctionStubPowered(
-                        dctx.rawState,
-                        this.idx,
-                        dir,
-                        dctx.powered,
-                        dctx.rotations,
-                    );
+                const stubP = this.conductsPower(dir, dctx.powered, dctx.rotations, dctx.portMap);
                 const pt = this.portCoord(dir, 0);
                 const dx = pt.x - this.x;
                 const dy = pt.y - this.y;
@@ -403,7 +331,7 @@ export class PowerSource extends Node {
 
 // ── Core simulation ──
 
-function buildAdjacency(state: PuzzleState): Map<number, Set<number>> {
+function buildAdjacency(state: CircuitState): Map<number, Set<number>> {
     const adj = new Map<number, Set<number>>();
     for (let i = 0; i < state.nodes.length; i++) adj.set(i, new Set());
     for (const e of state.edges) {
@@ -413,25 +341,38 @@ function buildAdjacency(state: PuzzleState): Map<number, Set<number>> {
     return adj;
 }
 
-function buildEdgeMap(state: PuzzleState): Map<string, PuzzleEdge> {
-    const m = new Map<string, PuzzleEdge>();
-    for (const e of state.edges) {
+function buildEdgeMap(edges: Edge[]): Map<string, Edge> {
+    const m = new Map<string, Edge>();
+    for (const e of edges) {
         m.set(`${e.from},${e.to}`, e);
         m.set(`${e.to},${e.from}`, e);
     }
     return m;
 }
 
+function buildPortMap(edges: Edge[]): Map<string, number[]> {
+    const portMap = new Map<string, number[]>();
+    for (const e of edges) {
+        const ka = `${e.from},${e.fromPort}`;
+        if (!portMap.has(ka)) portMap.set(ka, []);
+        portMap.get(ka)!.push(e.to);
+        const kb = `${e.to},${e.toPort}`;
+        if (!portMap.has(kb)) portMap.set(kb, []);
+        portMap.get(kb)!.push(e.from);
+    }
+    return portMap;
+}
+
 function applyJunctionRewiring(
-    state: PuzzleState,
+    state: CircuitState,
     rots: number[],
     adj: Map<number, Set<number>>,
     portMap: Map<string, number[]>,
-    edgeMap: Map<string, PuzzleEdge>,
+    edgeMap: Map<string, Edge>,
 ): void {
     for (let i = 0; i < state.nodes.length; i++) {
         const n = state.nodes[i];
-        if (n.kind !== 'junction') continue;
+        if (!(n instanceof Junction)) continue;
         if (n.jType === 'diag') {
             const pairs = activePairs(n.jType, rots[n.ring]);
             for (const [dirA, dirB] of pairs) {
@@ -484,7 +425,7 @@ function bfsPowered(sourceIdx: number, adj: Map<number, Set<number>>): Set<numbe
 }
 
 function deriveEdges(
-    state: PuzzleState,
+    state: CircuitState,
     powered: Set<number>,
     rots: number[],
     portMap: Map<string, number[]>,
@@ -493,33 +434,33 @@ function deriveEdges(
     const visitedEdges = new Set<number>();
     for (let ei = 0; ei < state.edges.length; ei++) {
         const e = state.edges[ei];
-        const a = endpointConducts(e.from, state.nodes[e.from], e.fromPort, powered, rots, portMap);
-        const b = endpointConducts(e.to, state.nodes[e.to], e.toPort, powered, rots, portMap);
+        const a = state.nodes[e.from].conductsPower(e.fromPort, powered, rots, portMap);
+        const b = state.nodes[e.to].conductsPower(e.toPort, powered, rots, portMap);
         if (a && b) poweredEdges.add(ei);
         if (a || b) visitedEdges.add(ei);
     }
     return { poweredEdges, visitedEdges };
 }
 
-export function calculatePowerResult(state: PuzzleState, rots: number[]): PowerResult {
+export function calculatePowerResult(state: CircuitState, rots: number[]): PowerResult {
     const adj = buildAdjacency(state);
-    const portMap = buildPortMap(state);
-    const edgeMap = buildEdgeMap(state);
+    const portMap = buildPortMap(state.edges);
+    const edgeMap = buildEdgeMap(state.edges);
 
     applyJunctionRewiring(state, rots, adj, portMap, edgeMap);
 
-    const sourceIdx = state.nodes.findIndex((n) => n.kind === 'source');
+    const sourceIdx = state.nodes.findIndex((n) => n instanceof PowerSource);
     const powered = bfsPowered(sourceIdx, adj);
 
     const { poweredEdges, visitedEdges } = deriveEdges(state, powered, rots, portMap);
     return { powered, poweredEdges, visitedEdges };
 }
 
-export function calculatePower(state: PuzzleState, rots: number[]): Set<number> {
+export function calculatePower(state: CircuitState, rots: number[]): Set<number> {
     return calculatePowerResult(state, rots).powered;
 }
 
-function solveOptimal(state: PuzzleState): number[] | null {
+function solveOptimal(state: CircuitState): number[] | null {
     const R = state.ringCount;
     const total = 1 << (2 * R);
     let best: number[] | null = null;
@@ -537,7 +478,7 @@ function solveOptimal(state: PuzzleState): number[] | null {
         const p = calculatePower(state, rots);
         let ok = true;
         for (let ni = 0; ni < state.nodes.length; ni++) {
-            if (state.nodes[ni].kind === 'socket' && !p.has(ni)) {
+            if (state.nodes[ni] instanceof Socket && !p.has(ni)) {
                 ok = false;
                 break;
             }
@@ -550,41 +491,35 @@ function solveOptimal(state: PuzzleState): number[] | null {
     return best;
 }
 
-export function isSolved(state: PuzzleState, powered: Set<number>): boolean {
+export function isSolved(state: CircuitState, powered: Set<number>): boolean {
     for (let i = 0; i < state.nodes.length; i++) {
-        if (state.nodes[i].kind === 'socket' && !powered.has(i)) return false;
+        if (state.nodes[i] instanceof Socket && !powered.has(i)) return false;
     }
     return true;
 }
 
 export function isEdgePowered(
-    edge: PuzzleEdge,
-    state: PuzzleState,
+    edge: Edge,
+    state: CircuitState,
     powered: Set<number>,
     rots: number[],
 ): boolean {
-    const portMap = buildPortMap(state);
+    const portMap = buildPortMap(state.edges);
     return (
-        endpointConducts(
-            edge.from,
-            state.nodes[edge.from],
-            edge.fromPort,
-            powered,
-            rots,
-            portMap,
-        ) && endpointConducts(edge.to, state.nodes[edge.to], edge.toPort, powered, rots, portMap)
+        state.nodes[edge.from].conductsPower(edge.fromPort, powered, rots, portMap) &&
+        state.nodes[edge.to].conductsPower(edge.toPort, powered, rots, portMap)
     );
 }
 
 export function isJunctionStubPowered(
-    state: PuzzleState,
+    state: CircuitState,
     nodeIdx: number,
     dir: Dir,
     powered: Set<number>,
     rots: number[],
 ): boolean {
     const node = state.nodes[nodeIdx];
-    if (node.kind !== 'junction') return false;
+    if (!(node instanceof Junction)) return false;
     return junctionStubConducts(
         nodeIdx,
         node.jType,
@@ -592,7 +527,7 @@ export function isJunctionStubPowered(
         dir,
         powered,
         rots,
-        buildPortMap(state),
+        buildPortMap(state.edges),
     );
 }
 
@@ -600,11 +535,11 @@ export function isJunctionStubPowered(
 
 export class PuzzleGenerator {
     private rc = 0;
-    private nodes: PuzzleNode[] = [];
-    private edges: PuzzleEdge[] = [];
+    private nodes: Node[] = [];
+    private edges: Edge[] = [];
     private idxMap = new Map<string, number>();
 
-    generate(virtualSize: number): PuzzleState | null {
+    generate(virtualSize: number): CircuitState | null {
         const pad = Math.round(virtualSize * PAD_RATIO);
 
         for (let att = 0; att < 200; att++) {
@@ -623,7 +558,16 @@ export class PuzzleGenerator {
             this._promoteSockets(centerIdx);
             this._scaleCoords(virtualSize, pad);
 
-            const state: PuzzleState = {
+            for (const n of this.nodes) {
+                if (n instanceof Junction) n.radius = Math.round(JUNC_RADIUS_RATIO * virtualSize);
+                else if (n instanceof Socket)
+                    n.radius = Math.round(SOCKET_RADIUS_RATIO * virtualSize);
+                else if (n instanceof PowerSource)
+                    n.radius = Math.round(POWER_RADIUS_RATIO * virtualSize);
+                else n.radius = Math.round(NODE_RADIUS_RATIO * virtualSize);
+            }
+
+            const state: CircuitState = {
                 nodes: this.nodes,
                 edges: this.edges,
                 ringCount: this.rc,
@@ -644,20 +588,14 @@ export class PuzzleGenerator {
             const pos = ringPositions(r);
             for (const cp of CORNER_POS) {
                 const i = this.nodes.length;
-                this.nodes.push({ kind: 'node', x: pos[cp].x, y: pos[cp].y });
+                this.nodes.push(new Node(i, pos[cp].x, pos[cp].y, 0));
                 this.idxMap.set(`${r},${cp}`, i);
             }
             for (let ci = 0; ci < 4; ci++) {
                 const cpos = CONN_POS[ci];
                 const jType = JUNC_TYPES[(Math.random() * 3) | 0];
                 const i = this.nodes.length;
-                this.nodes.push({
-                    kind: 'junction',
-                    ring: r,
-                    jType,
-                    x: pos[cpos].x,
-                    y: pos[cpos].y,
-                });
+                this.nodes.push(new Junction(i, pos[cpos].x, pos[cpos].y, 0, r, jType));
                 this.idxMap.set(`${r},${cpos}`, i);
             }
         }
@@ -665,7 +603,7 @@ export class PuzzleGenerator {
 
     private _createCenter(): number {
         const i = this.nodes.length;
-        this.nodes.push({ kind: 'socket', x: 0, y: 0 });
+        this.nodes.push(new Socket(i, 0, 0, 0));
         return i;
     }
 
@@ -675,8 +613,8 @@ export class PuzzleGenerator {
         const cornerNodeIdx = this.nodes.length;
         const sourceIdx = this.nodes.length + 1;
         this.nodes.push(
-            { kind: 'node', x: r0p1.x, y: r0p0.y - 16 },
-            { kind: 'source', x: r0p0.x, y: r0p0.y - 16 },
+            new Node(cornerNodeIdx, r0p1.x, r0p0.y - 16, 0),
+            new PowerSource(sourceIdx, r0p0.x, r0p0.y - 16, 0),
         );
         return [sourceIdx, cornerNodeIdx];
     }
@@ -687,7 +625,9 @@ export class PuzzleGenerator {
                 const np = (p + 1) % 8;
                 const aIdx = this.idxMap.get(`${r},${p}`)!;
                 const bIdx = this.idxMap.get(`${r},${np}`)!;
+                const idx = this.edges.length;
                 this.edges.push({
+                    idx,
                     from: aIdx,
                     fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
                     to: bIdx,
@@ -702,7 +642,9 @@ export class PuzzleGenerator {
             for (const cpos of CONN_POS) {
                 const aIdx = this.idxMap.get(`${r},${cpos}`)!;
                 const bIdx = this.idxMap.get(`${r + 1},${cpos}`)!;
+                const idx = this.edges.length;
                 this.edges.push({
+                    idx,
                     from: aIdx,
                     fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
                     to: bIdx,
@@ -718,7 +660,9 @@ export class PuzzleGenerator {
         const centerConns = shuffledConn.slice(0, centerConnCount);
         for (const cpos of centerConns) {
             const jIdx = this.idxMap.get(`${this.rc - 1},${cpos}`)!;
+            const idx = this.edges.length;
             this.edges.push({
+                idx,
                 from: jIdx,
                 fromPort: dirBetween(this.nodes[jIdx], this.nodes[centerIdx]),
                 to: centerIdx,
@@ -729,14 +673,18 @@ export class PuzzleGenerator {
 
     private _wirePower(sourceIdx: number, cornerNodeIdx: number): void {
         const r0p1 = this.idxMap.get('0,1')!;
+        const idx0 = this.edges.length;
+        const idx1 = idx0 + 1;
         this.edges.push(
             {
+                idx: idx0,
                 from: sourceIdx,
                 fromPort: dirBetween(this.nodes[sourceIdx], this.nodes[cornerNodeIdx]),
                 to: cornerNodeIdx,
                 toPort: dirBetween(this.nodes[cornerNodeIdx], this.nodes[sourceIdx]),
             },
             {
+                idx: idx1,
                 from: cornerNodeIdx,
                 fromPort: dirBetween(this.nodes[cornerNodeIdx], this.nodes[r0p1]),
                 to: r0p1,
@@ -754,7 +702,7 @@ export class PuzzleGenerator {
         selected.add(centerIdx);
         for (const i of selected) {
             const n = this.nodes[i]!;
-            this.nodes[i] = { kind: 'socket', x: n.x, y: n.y };
+            this.nodes[i] = new Socket(i, n.x, n.y, 0);
         }
     }
 
@@ -785,58 +733,18 @@ export class PuzzleGenerator {
     }
 }
 
-function hashPuzzle(s: PuzzleState): string {
-    return JSON.stringify({ nodes: s.nodes, edges: s.edges, ringCount: s.ringCount });
-}
-
-// ── Build visual graph ──
-
-export function buildGraph(state: PuzzleState): CircuitGraph {
-    const { nodes: pNodes, edges: pEdges, ringCount } = state;
-    const vs = state.virtualSize;
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-    let eidC = 0;
-    const eid = () => `e${eidC++}`;
-
-    for (let i = 0; i < pNodes.length; i++) {
-        const n = pNodes[i];
-        switch (n.kind) {
-            case 'junction':
-                nodes.push(
-                    new Junction(i, n.x, n.y, Math.round(JUNC_RADIUS_RATIO * vs), n.ring, n.jType),
-                );
-                break;
-            case 'socket':
-                nodes.push(new Socket(i, n.x, n.y, Math.round(SOCKET_RADIUS_RATIO * vs)));
-                break;
-            case 'source':
-                nodes.push(new PowerSource(i, n.x, n.y, Math.round(POWER_RADIUS_RATIO * vs)));
-                break;
-            case 'node':
-                nodes.push(new Node(i, n.x, n.y, Math.round(NODE_RADIUS_RATIO * vs)));
-                break;
-        }
-    }
-
-    for (let ei = 0; ei < pEdges.length; ei++) {
-        const e = pEdges[ei];
-        edges.push({
-            id: eid(),
-            idx: ei,
-            a: String(e.from),
-            aDir: e.fromPort,
-            b: String(e.to),
-            bDir: e.toPort,
-        });
-    }
-
-    const sockets: number[] = [];
-    for (let i = 0; i < pNodes.length; i++) {
-        if (pNodes[i].kind === 'socket') sockets.push(i);
-    }
-
-    return { nodes, edges, sockets, ringCount, optimal: state.optimal };
+function hashPuzzle(s: CircuitState): string {
+    return JSON.stringify({
+        nodes: s.nodes.map((n) => {
+            const base = { x: Math.round(n.x), y: Math.round(n.y) };
+            if (n instanceof Junction) return { ...base, t: 'j', ring: n.ring, jt: n.jType };
+            if (n instanceof Socket) return { ...base, t: 's' };
+            if (n instanceof PowerSource) return { ...base, t: 'p' };
+            return { ...base, t: 'n' };
+        }),
+        edges: s.edges.map((e) => ({ f: e.from, fp: e.fromPort, t: e.to, tp: e.toPort })),
+        rc: s.ringCount,
+    });
 }
 
 // ── Render colors ──
@@ -854,10 +762,9 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     @state() private _playing = false;
     @state() private _rotations: number[] = [];
     @state() private _powered: Set<number> = new Set();
-    @state() private _poweredEdges: Set<number> = new Set();
+    @state() private _visitedEdges: Set<number> = new Set();
 
-    private _graph: CircuitGraph | null = null;
-    private _rawState: PuzzleState | null = null;
+    private _circuitState: CircuitState | null = null;
     private _canvas!: HTMLCanvasElement;
     private _ctx: CanvasRenderingContext2D | null = null;
     private _completionAnimating = false;
@@ -890,14 +797,14 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
 
     private _generatePuzzle(): void {
         const generator = new PuzzleGenerator();
-        let state: PuzzleState | null = null;
+        let state: CircuitState | null = null;
         let hash = '';
         do {
             state = generator.generate(512);
             hash = hashPuzzle(state!);
         } while (hash === PuzzleLabCircuit._lastHash);
         PuzzleLabCircuit._lastHash = hash;
-        this._rawState = state!;
+        this._circuitState = state!;
         this._rotations = new Array(state!.ringCount).fill(0);
         this._moves = 0;
         this._optimal = state!.optimal;
@@ -908,8 +815,8 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     }
 
     private _resetPuzzle(): void {
-        if (!this._rawState) return;
-        this._rotations = new Array(this._rawState.ringCount).fill(0);
+        if (!this._circuitState) return;
+        this._rotations = new Array(this._circuitState.ringCount).fill(0);
         this._moves = 0;
         this._playing = false;
         this._completionAnimating = false;
@@ -917,38 +824,31 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         this._dispatchStatus();
     }
 
-    _calculatePower(state: PuzzleState, rots: number[]): Set<number> {
+    _calculatePower(state: CircuitState, rots: number[]): Set<number> {
         return calculatePower(state, rots);
     }
 
     private _simulateAndRender(): void {
-        if (!this._rawState) return;
-        this._graph = buildGraph(this._rawState);
-        const result = calculatePowerResult(this._rawState, this._rotations);
+        if (!this._circuitState) return;
+        const result = calculatePowerResult(this._circuitState, this._rotations);
         this._powered = result.powered;
-        this._poweredEdges = result.visitedEdges;
+        this._visitedEdges = result.visitedEdges;
         this.requestUpdate();
     }
 
-    private _onCanvasReady(e: Event): void {
-        this._canvas = e.target as HTMLCanvasElement;
-        this._ctx = this._canvas.getContext('2d');
-        this._drawCanvas();
-    }
-
     private _drawEdges(ctx: CanvasRenderingContext2D): void {
-        for (const e of this._graph!.edges) {
-            const nA = this._graph!.nodes[+e.a];
-            const nB = this._graph!.nodes[+e.b];
+        for (const e of this._circuitState!.edges) {
+            const nA = this._circuitState!.nodes[e.from];
+            const nB = this._circuitState!.nodes[e.to];
             if (!nA || !nB) continue;
-            const p1 = nA.portCoord(e.aDir);
-            const p2 = nB.portCoord(e.bDir);
-            const isP = this._poweredEdges.has(e.idx);
+            const p1 = nA.portCoord(e.fromPort);
+            const p2 = nB.portCoord(e.toPort);
+            const isP = this._visitedEdges.has(e.idx);
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = isP ? CO : CD;
-            ctx.lineWidth = isP ? 1.5 : 1.5;
+            ctx.lineWidth = 1.5;
             if (isP) {
                 ctx.shadowColor = CO;
                 ctx.shadowBlur = 2;
@@ -963,9 +863,10 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     }
 
     private _drawStatusOverlay(ctx: CanvasRenderingContext2D, size: number): void {
-        const total = this._graph!.sockets.length;
+        const sockets = this._circuitState!.nodes.filter((n) => n instanceof Socket);
+        const total = sockets.length;
         let count = 0;
-        for (const r of this._graph!.sockets) if (this._powered.has(r)) count++;
+        for (const s of sockets) if (this._powered.has(s.idx)) count++;
         const pad = Math.round(size * PAD_RATIO);
         ctx.fillStyle = CO;
         ctx.font = `${Math.round(size * 0.027)}px "Noto Sans Symbols"`;
@@ -979,7 +880,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
 
     private _drawCanvas(): void {
         const c = this._canvas;
-        if (!c || !this._ctx || !this._graph) return;
+        if (!c || !this._ctx || !this._circuitState) return;
         const ctx = this._ctx;
         const dpr = window.devicePixelRatio || 1;
         const rect = c.getBoundingClientRect();
@@ -991,20 +892,21 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         ctx.fillStyle = '#0d0d0d';
         ctx.fillRect(0, 0, size, size);
 
-        const vs = this._rawState!.virtualSize;
+        const vs = this._circuitState.virtualSize;
         const scale = size / vs;
         ctx.save();
         ctx.scale(scale, scale);
 
         this._drawEdges(ctx);
 
+        const portMap = buildPortMap(this._circuitState.edges);
         const dctx: DrawContext = {
             hoveredRing: this._hoveredRing,
             rotations: this._rotations,
-            rawState: this._rawState,
+            portMap,
             powered: this._powered,
         };
-        for (const n of this._graph.nodes) {
+        for (const n of this._circuitState.nodes) {
             n.draw(ctx, dctx);
         }
 
@@ -1014,15 +916,15 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     }
 
     private _onCanvasMove(e: MouseEvent): void {
-        if (!this._graph || !this._canvas) return;
+        if (!this._circuitState || !this._canvas) return;
         const rect = this._canvas.getBoundingClientRect();
         const size = Math.min(rect.width, rect.height);
-        const vs = this._rawState!.virtualSize;
+        const vs = this._circuitState.virtualSize;
         const scale = size / vs;
         const x = (e.clientX - rect.left) / scale;
         const y = (e.clientY - rect.top) / scale;
         let foundRing = -1;
-        for (const n of this._graph.nodes) {
+        for (const n of this._circuitState.nodes) {
             if (!(n instanceof Junction)) continue;
             if ((x - n.x) ** 2 + (y - n.y) ** 2 <= (n.radius * 2) ** 2) {
                 foundRing = n.ring;
@@ -1045,9 +947,10 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     }
 
     private _onCanvasClick(_e: MouseEvent): void {
-        if (this._playing || this._completionAnimating || !this._graph || !this._canvas) return;
+        if (this._playing || this._completionAnimating || !this._circuitState || !this._canvas)
+            return;
         if (this._hoveredRing < 0) return;
-        if (this._rawState && isSolved(this._rawState, this._powered)) return;
+        if (isSolved(this._circuitState, this._powered)) return;
         this._rotateRing(this._hoveredRing);
     }
 
@@ -1058,7 +961,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         playTone(Math.min(this._moves / Math.max(this._optimal, 1), 1));
         this._simulateAndRender();
         this._dispatchStatus();
-        if (this._rawState && isSolved(this._rawState, this._powered))
+        if (this._circuitState && isSolved(this._circuitState, this._powered))
             setTimeout(() => this._completePuzzle(), 400);
     }
 
@@ -1093,19 +996,19 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         const b: ActionButton[] = this._playing
             ? []
             : [
-                {
-                    label: 'New Puzzle',
-                    handler: () => {
-                        if (!this._playing) this._generatePuzzle();
-                    },
-                },
-                {
-                    label: 'Reset',
-                    handler: () => {
-                        if (!this._playing) this._resetPuzzle();
-                    },
-                },
-            ];
+                  {
+                      label: 'New Puzzle',
+                      handler: () => {
+                          if (!this._playing) this._generatePuzzle();
+                      },
+                  },
+                  {
+                      label: 'Reset',
+                      handler: () => {
+                          if (!this._playing) this._resetPuzzle();
+                      },
+                  },
+              ];
         this.dispatchEvent(
             new CustomEvent(PUZZLE_ACTIONS, { detail: b, bubbles: true, composed: true }),
         );
@@ -1118,7 +1021,6 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                 @click=${this._onCanvasClick}
                 @mousemove=${this._onCanvasMove}
                 @mouseleave=${this._onCanvasLeave}
-                @canvas-ready=${this._onCanvasReady}
             ></canvas>
         </div>`;
     }
