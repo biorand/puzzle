@@ -85,6 +85,7 @@ describe('calculatePower', () => {
             edges: edges as any,
             ringCount,
             optimal: 0,
+            virtualSize: 512,
         };
     }
 
@@ -458,7 +459,7 @@ describe('isEdgePowered', () => {
     ];
 
     function make(nodes: PuzzleNode[], edges: typeof baseEdges, ringCount: number): PuzzleState {
-        return { nodes, edges: edges as any, ringCount, optimal: 0 };
+        return { nodes, edges: edges as any, ringCount, optimal: 0, virtualSize: 512 };
     }
 
     it('T junc: edge through active port (UP) is powered', () => {
@@ -615,7 +616,7 @@ describe('regression: power flow + edge rendering', () => {
         { from: 4, fromPort: 'RIGHT' as const, to: 6, toPort: 'LEFT' as const }, // 5: RIGHT→receiver
         { from: 5, fromPort: 'DOWN' as const, to: 7, toPort: 'UP' as const }, // 6: DOWN→receiver
     ];
-    const state: PuzzleState = { nodes, edges: edges as any, ringCount: 1, optimal: 0 };
+    const state: PuzzleState = { nodes, edges: edges as any, ringCount: 1, optimal: 0, virtualSize: 512 };
 
     it('diag rot=1 transmits power from RIGHT to DOWN (right→bottom pairing)', () => {
         // diag rot=1 pairs: (LEFT,UP) and (RIGHT,DOWN).
@@ -654,7 +655,7 @@ describe('regression: power flow + edge rendering', () => {
         const tNodes = nodes.map((n) =>
             n.kind === 'junction' ? { ...n, jType: 'T' as const } : n,
         );
-        const tState: PuzzleState = { nodes: tNodes, edges: edges as any, ringCount: 1, optimal: 0 };
+        const tState: PuzzleState = { nodes: tNodes, edges: edges as any, ringCount: 1, optimal: 0, virtualSize: 512 };
         // T rot=0: UP,RIGHT,LEFT active. Power enters UP, exits RIGHT to plain node, then onward.
         const { powered, poweredEdges } = calculatePowerResult(tState, [0]);
         expect(powered.has(4)).toBe(true); // RIGHT plain

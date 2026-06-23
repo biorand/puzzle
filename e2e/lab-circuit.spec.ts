@@ -146,12 +146,18 @@ test.describe('Lab Circuit Puzzle', () => {
             }
             if (!best) return null;
 
+            // Scale virtual coords to canvas pixel coords
+            const canvas = document.querySelector('#lab-circuit-canvas') as HTMLCanvasElement;
+            const rect = canvas.getBoundingClientRect();
+            const size = Math.min(rect.width, rect.height);
+            const scale = size / state.virtualSize;
+
             // Build click plan — click any junction in each ring for each required rotation
             const clickPlan: Array<{ x: number; y: number }> = [];
             for (let ring = 0; ring < R; ring++) {
                 for (let c = 0; c < best[ring]; c++) {
                     const jNode = graph.nodes.find((n: any) => n.ring === ring);
-                    if (jNode) clickPlan.push({ x: jNode.x, y: jNode.y });
+                    if (jNode) clickPlan.push({ x: jNode.x * scale, y: jNode.y * scale });
                 }
             }
             return { clickPlan };
