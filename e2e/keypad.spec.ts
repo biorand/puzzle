@@ -41,8 +41,8 @@ test.describe('Keypad Puzzle', () => {
         await expect(overlay.locator('#complete-text')).toHaveText('CHEAT ACTIVATED');
         await expect(overlay.locator('#completed-unlock-name')).toHaveText('ALL PUZZLES');
 
-        // After the mock melody resolves and 500ms timeout, should navigate to main menu
-        await page.waitForTimeout(800);
+        // Overlay stays visible for 3 seconds, then navigates to main menu
+        await page.waitForTimeout(3500);
         await expect(page).toHaveURL('/#/');
 
         // Verify all puzzles are now unlocked
@@ -107,8 +107,8 @@ test.describe('Keypad Puzzle', () => {
         await expect(overlay.locator('#complete-text')).toHaveText('CHEAT ACTIVATED');
         await expect(overlay.locator('#completed-unlock-name')).toHaveText('ALL PUZZLES');
 
-        // Wait for navigation to main menu
-        await page.waitForTimeout(800);
+        // Overlay stays visible for 3 seconds, then navigates to main menu
+        await page.waitForTimeout(3500);
         await expect(page).toHaveURL('/#/');
 
         // Verify progress

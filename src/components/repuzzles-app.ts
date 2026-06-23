@@ -354,13 +354,17 @@ export class RepuzzlesApp extends LitElement {
         this._overlayNextName = 'ALL PUZZLES';
         this._overlayMessage = 'CHEAT ACTIVATED';
         this._overlayOpen = true;
-        e.detail.playMelodyFn.then(() => {
-            setTimeout(() => {
-                this._overlayOpen = false;
-                this._overlayNextName = null;
-                location.hash = '#/';
-            }, 500);
-        });
+        // Fire-and-forget the melody — don't block the UI on audio.
+        // The melody was already started in the keypad before the event was dispatched;
+        // this is just a reference to the same Promise so we can safely ignore it.
+        e.detail.playMelodyFn.catch(() => {});
+        // Fixed delay before closing overlay and returning to menu.
+        // Matches the pattern used by _onPuzzleComplete (fire audio then sleep).
+        setTimeout(() => {
+            this._overlayOpen = false;
+            this._overlayNextName = null;
+            location.hash = '#/';
+        }, 3000);
     }
 
     private _renderLitPuzzle() {
@@ -440,7 +444,14 @@ export class RepuzzlesApp extends LitElement {
         }
 
         if (this._page === 'run') {
-            return html`<run-host mode=${this._runMode}></run-host>`;
+            return html`
+                <run-host mode=${this._runMode} @cheat-unlock-all=${this._onCheatUnlock}></run-host>
+                <complete-overlay
+                    ?open=${this._overlayOpen}
+                    message=${this._overlayMessage}
+                    .nextName=${this._overlayNextName}
+                ></complete-overlay>
+            `;
         }
 
         if (this._page === 'run-results') {

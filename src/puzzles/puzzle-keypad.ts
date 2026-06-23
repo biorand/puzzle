@@ -129,7 +129,7 @@ export class PuzzleKeypad extends PuzzleBase {
                     new CustomEvent('cheat-unlock-all', {
                         detail: {
                             playMelodyFn: playMelody(
-                                'D5/3.0[0.3]\nZ/0.8 E5/3.0[0.2.5]\nZ/1.6 F5/5.0[0.2]',
+                                'D5/3.0[0.3]\nZ/0.8 E5/3.0[0.25]\nZ/1.6 F5/5.0[0.2]',
                             ),
                         },
                         bubbles: true,
