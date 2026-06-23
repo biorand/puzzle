@@ -4,6 +4,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { playChime, playTone } from '../audio';
 import { sleep, defaultActions } from './shared';
 import { PuzzleBase } from './base';
+import { Rng } from '../rng';
 
 const SWITCH_COUNT = 5;
 const START = 0;
@@ -15,14 +16,10 @@ interface SwitchValues {
     y: number;
 }
 
-function randInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function generateUniquePuzzle(): { values: SwitchValues[]; target: number } | null {
+function generateUniquePuzzle(rng: Rng): { values: SwitchValues[]; target: number } | null {
     for (let attempt = 0; attempt < 200; attempt++) {
         const bits: boolean[] = [true];
-        for (let i = 1; i < SWITCH_COUNT; i++) bits.push(Math.random() < 0.5);
+        for (let i = 1; i < SWITCH_COUNT; i++) bits.push(rng.next() < 0.5);
         const vals: SwitchValues[] = [];
         let pos = 0;
         let ok = true;
@@ -33,8 +30,8 @@ function generateUniquePuzzle(): { values: SwitchValues[]; target: number } | nu
                     ok = false;
                     break;
                 }
-                const x = randInt(8, maxX);
-                const y = Math.min(pos + randInt(1, 8), 99);
+                const x = rng.nextInteger(8, maxX);
+                const y = Math.min(pos + rng.nextInteger(1, 8), 99);
                 vals.push({ x, y });
                 pos += x;
             } else {
@@ -42,8 +39,8 @@ function generateUniquePuzzle(): { values: SwitchValues[]; target: number } | nu
                     ok = false;
                     break;
                 }
-                const y = randInt(4, Math.min(30, pos));
-                const x = Math.min(100 - pos + randInt(1, 8), 99);
+                const y = rng.nextInteger(4, Math.min(30, pos));
+                const x = Math.min(100 - pos + rng.nextInteger(1, 8), 99);
                 vals.push({ x, y });
                 pos -= y;
             }
@@ -64,7 +61,7 @@ export class PuzzlePowerPanel extends PuzzleBase {
     @state() private _flashing = false;
 
     _newPuzzle(): void {
-        const puzzle = generateUniquePuzzle();
+        const puzzle = generateUniquePuzzle(this._getRng());
         if (!puzzle) {
             this._switchValues = [
                 { x: 30, y: 5 },

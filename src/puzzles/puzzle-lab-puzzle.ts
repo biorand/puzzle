@@ -84,16 +84,21 @@ export class PuzzleLabPuzzle extends PuzzleBase {
 
     private _initialGrid: Cell[] = [];
 
+    get vanillaCount(): number {
+        return 1;
+    }
+
     _newPuzzle(): void {
+        const rng = this._getRng();
         let solution: number[] | null = null;
         let attempts = 0;
         let grid: Cell[];
         do {
             grid = [];
             for (let i = 0; i < 9; i++) {
-                let dir = DIR_ORDER[Math.floor(Math.random() * 4)];
+                let dir = DIR_ORDER[rng.nextInteger(0, 3)];
                 if (i === 0 && dir === 'down') dir = 'up';
-                grid.push({ direction: dir, colorIndex: Math.floor(Math.random() * 4) });
+                grid.push({ direction: dir, colorIndex: rng.nextInteger(0, 3) });
             }
             solution = solve(grid);
             attempts++;

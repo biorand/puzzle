@@ -4,6 +4,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { playChime, playTone } from '../audio';
 import { sleep, defaultActions } from './shared';
 import { PuzzleBase } from './base';
+import { Rng } from '../rng';
 
 type Action = 'red' | 'blue' | 'green';
 interface Plant43State {
@@ -98,21 +99,21 @@ function bfsAll(start?: Plant43State): Map<string, BfsEntry> {
     return visited;
 }
 
-function generateRandomStart(total: number): Plant43State {
+function generateRandomStart(rng: Rng, total: number): Plant43State {
     for (;;) {
-        const a = Math.floor(Math.random() * (Math.min(total, CAPACITIES[0]) + 1));
+        const a = rng.nextInteger(0, Math.min(total, CAPACITIES[0]));
         const rem = total - a;
         if (rem > CAPACITIES[1] + CAPACITIES[2]) continue;
-        const b = Math.floor(Math.random() * (Math.min(rem, CAPACITIES[1]) + 1));
+        const b = rng.nextInteger(0, Math.min(rem, CAPACITIES[1]));
         const c = rem - b;
         if (c >= 0 && c <= CAPACITIES[2]) return { fills: [a, b, c], slots: [...START_SLOTS] };
     }
 }
 
-function generatePuzzle(): PuzzleConfig {
+function generatePuzzle(rng: Rng): PuzzleConfig {
     for (let attempt = 0; attempt < 200; attempt++) {
-        const total = 4 + Math.floor(Math.random() * 9);
-        const startState = generateRandomStart(total);
+        const total = rng.nextInteger(4, 12);
+        const startState = generateRandomStart(rng, total);
         const reachable = bfsAll(startState);
         const bestPerFill = new Map<number, BfsEntry>();
         for (const entry of reachable.values()) {
@@ -125,7 +126,7 @@ function generatePuzzle(): PuzzleConfig {
             ([, v]) => v.moves >= 4 && v.moves <= MAX_MOVES,
         );
         if (validFills.length > 0) {
-            const chosen = validFills[Math.floor(Math.random() * validFills.length)];
+            const chosen = validFills[rng.nextInteger(0, validFills.length - 1)];
             return {
                 targetFill: chosen[0],
                 optimalMoves: chosen[1].moves,
@@ -169,8 +170,12 @@ export class PuzzlePlant43 extends PuzzleBase {
 
     private _puzzleConfig: PuzzleConfig | null = null;
 
+    get vanillaCount(): number {
+        return 2;
+    }
+
     _newPuzzle(): void {
-        this._puzzleConfig = generatePuzzle();
+        this._puzzleConfig = generatePuzzle(this._getRng());
         const s = this._puzzleConfig.startState;
         this._currentState = { fills: [...s.fills], slots: [...s.slots] };
         this._moves = 0;

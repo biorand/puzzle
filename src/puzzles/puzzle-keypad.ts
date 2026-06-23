@@ -44,7 +44,26 @@ export class PuzzleKeypad extends PuzzleBase {
     private _cheatBuffer: number[] = [];
     private _cheatCount = 0;
 
+    get vanillaCount(): number {
+        return 3;
+    }
+
+    loadVanilla(index: number): void {
+        const d = index + 1;
+        const pool = groups[d];
+        const pick = pool.length > 0 ? groups[d][0] : SOLVED;
+        this._initialState = pick;
+        this._state = pick;
+        this._moves = 0;
+        this._optimal = d;
+        this._playing = false;
+        this._cellVisible = new Array(9).fill(true);
+        this._cheatBuffer = [];
+        this._sendStatus(this._moves, this._optimal);
+    }
+
     _newPuzzle(): void {
+        const rng = this._getRng();
         let d: number;
         if (
             this.forceDifficulty !== undefined &&
@@ -53,10 +72,10 @@ export class PuzzleKeypad extends PuzzleBase {
         ) {
             d = this.forceDifficulty;
         } else {
-            d = Math.floor(Math.random() * Math.min(4, maxDist)) + 1;
+            d = rng.nextInteger(1, Math.min(4, maxDist));
         }
         const pool = groups[d];
-        const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : SOLVED;
+        const pick = pool.length > 0 ? rng.pick(pool) : SOLVED;
         this._initialState = pick;
         this._state = pick;
         this._moves = 0;

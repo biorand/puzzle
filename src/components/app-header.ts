@@ -23,7 +23,7 @@ export class AppHeader extends LitElement {
             <div id="app-header">
                 <button
                     id="back-btn"
-                    ?hidden=${!this.showBack}
+                    class="${this.showBack ? '' : 'hidden'}"
                     aria-label="Back"
                     @click=${this._onBack}
                 >
@@ -32,7 +32,7 @@ export class AppHeader extends LitElement {
                 <span id="puzzle-title">${this.title}</span>
                 <button
                     id="settings-btn"
-                    ?hidden=${!this.showSettings}
+                    class="${this.showSettings ? '' : 'hidden'}"
                     aria-label="Settings"
                     @click=${this._onSettings}
                 >

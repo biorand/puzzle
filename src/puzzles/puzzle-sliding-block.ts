@@ -5,6 +5,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { playMelody, playTone } from '../audio';
 import { sleep, defaultActions, UMBRELLA_SVG } from './shared';
 import { PuzzleBase } from './base';
+import { Rng } from '../rng';
 
 const ROWS = 3;
 const COLS = 3;
@@ -80,13 +81,13 @@ function getOptimal(startBoard: number[]): number {
     return -1;
 }
 
-function shufflePuzzle(): { board: number[]; optimal: number } {
+function shufflePuzzle(rng: Rng): { board: number[]; optimal: number } {
     for (;;) {
         const board = [...GOAL];
         let blank = SIZE - 1;
         for (let s = 0; s < 500; s++) {
             const moves = [...possibleMoves(board, blank)];
-            const nextBoard = moves[Math.floor(Math.random() * moves.length)];
+            const nextBoard = rng.pick(moves);
             for (let i = 0; i < SIZE; i++) board[i] = nextBoard[i];
             blank = board.indexOf(0);
         }
@@ -130,8 +131,12 @@ export class PuzzleSlidingBlock extends PuzzleBase {
         }
     }
 
+    get vanillaCount(): number {
+        return 1;
+    }
+
     _newPuzzle(): void {
-        const result = shufflePuzzle();
+        const result = shufflePuzzle(this._getRng());
         this._board = result.board;
         this._optimal = result.optimal;
         this._blankPos = this._board.indexOf(0);

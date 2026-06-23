@@ -108,7 +108,7 @@ test.describe('Plant 43 Puzzle', () => {
     await expect(page.locator('.plant43-btn')).toHaveCount(3);
 
     // Click "New" button in footer — should generate another fresh puzzle
-    await page.locator('#app-footer .action-btn').first().click();
+    await page.locator('app-footer').locator('button').first().click();
     await page.waitForTimeout(300);
 
     await expect(page.locator('.plant43-stage')).toBeVisible();
