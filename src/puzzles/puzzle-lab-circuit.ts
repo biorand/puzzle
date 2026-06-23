@@ -17,8 +17,8 @@ interface JunctionNode extends BaseNode {
     ring: number;
     jType: JunctionType;
 }
-interface ReceiverNode extends BaseNode {
-    kind: 'receiver';
+interface SocketNode extends BaseNode {
+    kind: 'socket';
 }
 interface SourceNode extends BaseNode {
     kind: 'source';
@@ -26,7 +26,7 @@ interface SourceNode extends BaseNode {
 interface PlainNode extends BaseNode {
     kind: 'node';
 }
-export type PuzzleNode = JunctionNode | ReceiverNode | SourceNode | PlainNode;
+export type PuzzleNode = JunctionNode | SocketNode | SourceNode | PlainNode;
 
 export interface PuzzleEdge {
     from: number;
@@ -62,7 +62,7 @@ export interface DrawContext {
 export interface CircuitGraph {
     nodes: Node[];
     edges: Edge[];
-    receivers: number[];
+    sockets: number[];
     ringCount: number;
     optimal: number;
 }
@@ -91,15 +91,15 @@ const RING_GAP = 14;
 const MAX_R = 4;
 const RING_COUNT_MIN = 2;
 const RING_COUNT_MAX = 4;
-const RECEIVER_MIN = 2;
-const RECEIVER_MAX = 6;
+const SOCKET_MIN = 2;
+const SOCKET_MAX = 6;
 const CONN_POS = [1, 3, 5, 7];
 const CORNER_POS = [0, 2, 4, 6];
 const JUNC_TYPES: JunctionType[] = ['T', 'L', 'diag'];
 const PAD_RATIO = 24 / 512;
-const NODE_RADIUS_RATIO = 2 / 512;
+const NODE_RADIUS_RATIO = 1 / 512;
 const JUNC_RADIUS_RATIO = 12 / 512;
-const RECEIVER_RADIUS_RATIO = 10 / 512;
+const SOCKET_RADIUS_RATIO = 10 / 512;
 const POWER_RADIUS_RATIO = 20 / 512;
 
 // ── Pure helpers ──
@@ -206,6 +206,8 @@ function buildPortMap(state: PuzzleState): Map<string, number[]> {
 // ── Node class hierarchy ──
 
 export class Node {
+    protected _portPadding = 0;
+
     constructor(
         public idx: number,
         public x: number,
@@ -213,8 +215,8 @@ export class Node {
         public radius: number,
     ) { }
 
-    portCoord(dir: Dir, padding = 4): { x: number; y: number } {
-        const r = this.radius + padding;
+    portCoord(dir: Dir, padding?: number): { x: number; y: number } {
+        const r = this.radius + (padding ?? this._portPadding);
         switch (dir) {
             case 'UP':
                 return { x: this.x, y: this.y - r };
@@ -255,6 +257,7 @@ export class Junction extends Node {
         public jType: JunctionType,
     ) {
         super(idx, x, y, radius);
+        this._portPadding = 4;
     }
 
     conductsPower(
@@ -342,6 +345,7 @@ export class Junction extends Node {
 export class Socket extends Node {
     constructor(idx: number, x: number, y: number, radius: number) {
         super(idx, x, y, radius);
+        this._portPadding = 4;
     }
 
     draw(ctx: CanvasRenderingContext2D, dctx: DrawContext): void {
@@ -533,7 +537,7 @@ function solveOptimal(state: PuzzleState): number[] | null {
         const p = calculatePower(state, rots);
         let ok = true;
         for (let ni = 0; ni < state.nodes.length; ni++) {
-            if (state.nodes[ni].kind === 'receiver' && !p.has(ni)) {
+            if (state.nodes[ni].kind === 'socket' && !p.has(ni)) {
                 ok = false;
                 break;
             }
@@ -548,7 +552,7 @@ function solveOptimal(state: PuzzleState): number[] | null {
 
 export function isSolved(state: PuzzleState, powered: Set<number>): boolean {
     for (let i = 0; i < state.nodes.length; i++) {
-        if (state.nodes[i].kind === 'receiver' && !powered.has(i)) return false;
+        if (state.nodes[i].kind === 'socket' && !powered.has(i)) return false;
     }
     return true;
 }
@@ -616,7 +620,7 @@ export class PuzzleGenerator {
             this._wireInterRing();
             this._wireCenter(centerIdx);
             this._wirePower(sourceIdx, cornerNodeIdx);
-            this._promoteReceivers(centerIdx);
+            this._promoteSockets(centerIdx);
             this._scaleCoords(virtualSize, pad);
 
             const state: PuzzleState = {
@@ -661,7 +665,7 @@ export class PuzzleGenerator {
 
     private _createCenter(): number {
         const i = this.nodes.length;
-        this.nodes.push({ kind: 'receiver', x: 0, y: 0 });
+        this.nodes.push({ kind: 'socket', x: 0, y: 0 });
         return i;
     }
 
@@ -741,16 +745,16 @@ export class PuzzleGenerator {
         );
     }
 
-    private _promoteReceivers(centerIdx: number): void {
+    private _promoteSockets(centerIdx: number): void {
         const cornerIdxs = CORNER_POS.flatMap((cp) =>
             Array.from({ length: this.rc }, (_, r) => this.idxMap.get(`${r},${cp}`)!),
         );
-        const target = (RECEIVER_MIN + Math.random() * (RECEIVER_MAX - RECEIVER_MIN + 1)) | 0;
+        const target = (SOCKET_MIN + Math.random() * (SOCKET_MAX - SOCKET_MIN + 1)) | 0;
         const selected = new Set(shuffle(cornerIdxs).slice(0, Math.min(target, cornerIdxs.length)));
         selected.add(centerIdx);
         for (const i of selected) {
             const n = this.nodes[i]!;
-            this.nodes[i] = { kind: 'receiver', x: n.x, y: n.y };
+            this.nodes[i] = { kind: 'socket', x: n.x, y: n.y };
         }
     }
 
@@ -803,8 +807,8 @@ export function buildGraph(state: PuzzleState): CircuitGraph {
                     new Junction(i, n.x, n.y, Math.round(JUNC_RADIUS_RATIO * vs), n.ring, n.jType),
                 );
                 break;
-            case 'receiver':
-                nodes.push(new Socket(i, n.x, n.y, Math.round(RECEIVER_RADIUS_RATIO * vs)));
+            case 'socket':
+                nodes.push(new Socket(i, n.x, n.y, Math.round(SOCKET_RADIUS_RATIO * vs)));
                 break;
             case 'source':
                 nodes.push(new PowerSource(i, n.x, n.y, Math.round(POWER_RADIUS_RATIO * vs)));
@@ -827,12 +831,12 @@ export function buildGraph(state: PuzzleState): CircuitGraph {
         });
     }
 
-    const receivers: number[] = [];
+    const sockets: number[] = [];
     for (let i = 0; i < pNodes.length; i++) {
-        if (pNodes[i].kind === 'receiver') receivers.push(i);
+        if (pNodes[i].kind === 'socket') sockets.push(i);
     }
 
-    return { nodes, edges, receivers, ringCount, optimal: state.optimal };
+    return { nodes, edges, sockets, ringCount, optimal: state.optimal };
 }
 
 // ── Render colors ──
@@ -959,9 +963,9 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
     }
 
     private _drawStatusOverlay(ctx: CanvasRenderingContext2D, size: number): void {
-        const total = this._graph!.receivers.length;
+        const total = this._graph!.sockets.length;
         let count = 0;
-        for (const r of this._graph!.receivers) if (this._powered.has(r)) count++;
+        for (const r of this._graph!.sockets) if (this._powered.has(r)) count++;
         const pad = Math.round(size * PAD_RATIO);
         ctx.fillStyle = CO;
         ctx.font = `${Math.round(size * 0.027)}px "Noto Sans Symbols"`;

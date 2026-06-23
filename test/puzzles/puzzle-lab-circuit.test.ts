@@ -98,7 +98,7 @@ describe('calculatePower', () => {
                 { kind: 'junction', ring: 0, jType: 'T', x: 0, y: 0 },
                 { kind: 'node', x: -10, y: 0 },
                 { kind: 'node', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -128,9 +128,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'T', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -157,9 +157,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'L', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -184,9 +184,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'diag', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 }, // LEFT
-                { kind: 'receiver', x: 10, y: 0 }, // RIGHT
-                { kind: 'receiver', x: 0, y: 10 }, // DOWN (inter-ring / center)
+                { kind: 'socket', x: -10, y: 0 }, // LEFT
+                { kind: 'socket', x: 10, y: 0 }, // RIGHT
+                { kind: 'socket', x: 0, y: 10 }, // DOWN (inter-ring / center)
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -214,9 +214,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'T', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -243,9 +243,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'T', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -272,9 +272,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'L', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -301,9 +301,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'L', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -330,9 +330,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'L', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -359,9 +359,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'diag', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -387,9 +387,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'diag', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 },
-                { kind: 'receiver', x: 10, y: 0 },
-                { kind: 'receiver', x: 0, y: 10 },
+                { kind: 'socket', x: -10, y: 0 },
+                { kind: 'socket', x: 10, y: 0 },
+                { kind: 'socket', x: 0, y: 10 },
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -415,9 +415,9 @@ describe('calculatePower', () => {
                 { kind: 'source', x: 0, y: -24 },
                 { kind: 'node', x: 0, y: -12 },
                 { kind: 'junction', ring: 0, jType: 'diag', x: 0, y: 0 },
-                { kind: 'receiver', x: -10, y: 0 }, // LEFT
-                { kind: 'receiver', x: 10, y: 0 }, // RIGHT
-                { kind: 'receiver', x: 0, y: 10 }, // DOWN
+                { kind: 'socket', x: -10, y: 0 }, // LEFT
+                { kind: 'socket', x: 10, y: 0 }, // RIGHT
+                { kind: 'socket', x: 0, y: 10 }, // DOWN
             ],
             [
                 { from: 0, fromPort: 'DOWN', to: 1, toPort: 'UP' },
@@ -445,9 +445,9 @@ describe('isEdgePowered', () => {
         { kind: 'source', x: 0, y: -24 },
         { kind: 'node', x: 0, y: -12 },
         { kind: 'junction', ring: 0, jType: 'T', x: 0, y: 0 },
-        { kind: 'receiver', x: -10, y: 0 },
-        { kind: 'receiver', x: 10, y: 0 },
-        { kind: 'receiver', x: 0, y: 10 },
+        { kind: 'socket', x: -10, y: 0 },
+        { kind: 'socket', x: 10, y: 0 },
+        { kind: 'socket', x: 0, y: 10 },
     ];
 
     const baseEdges = [
@@ -481,7 +481,7 @@ describe('isEdgePowered', () => {
             1,
         );
         const powered = calculatePower(state, [0]);
-        // Edge 2↔5 (junction→receiver via DOWN) — DOWN port inactive
+        // Edge 2↔5 (junction→socket via DOWN) — DOWN port inactive
         expect(isEdgePowered(baseEdges[4], state, powered, [0])).toBe(false);
     });
 
@@ -504,7 +504,7 @@ describe('isEdgePowered', () => {
             1,
         );
         const powered = calculatePower(state, [0]);
-        // Edge 2↔4 (junction→receiver via RIGHT) — RIGHT port active
+        // Edge 2↔4 (junction→socket via RIGHT) — RIGHT port active
         expect(isEdgePowered(baseEdges[3], state, powered, [0])).toBe(true);
     });
 
@@ -579,7 +579,7 @@ describe('isEdgePowered', () => {
         );
         // diag rot=0: UP↔RIGHT, DOWN↔LEFT → LEFT pairs with DOWN, neither powered
         const powered = calculatePower(state, [0]);
-        // Edge 2↔3 (junction→receiver via LEFT) — LEFT port neighbor not powered
+        // Edge 2↔3 (junction→socket via LEFT) — LEFT port neighbor not powered
         expect(isEdgePowered(baseEdges[2], state, powered, [0])).toBe(false);
     });
 
@@ -604,8 +604,8 @@ describe('regression: power flow + edge rendering', () => {
         { kind: 'node', x: -10, y: 0 }, // LEFT (plain)
         { kind: 'node', x: 10, y: 0 }, // RIGHT (plain)
         { kind: 'node', x: 0, y: 10 }, // DOWN (plain)
-        { kind: 'receiver', x: 20, y: 0 }, // beyond RIGHT
-        { kind: 'receiver', x: 0, y: 20 }, // beyond DOWN
+        { kind: 'socket', x: 20, y: 0 }, // beyond RIGHT
+        { kind: 'socket', x: 0, y: 20 }, // beyond DOWN
     ];
     const edges = [
         { from: 0, fromPort: 'DOWN' as const, to: 1, toPort: 'UP' as const }, // 0
@@ -613,8 +613,8 @@ describe('regression: power flow + edge rendering', () => {
         { from: 2, fromPort: 'LEFT' as const, to: 3, toPort: 'RIGHT' as const }, // 2
         { from: 2, fromPort: 'RIGHT' as const, to: 4, toPort: 'LEFT' as const }, // 3
         { from: 2, fromPort: 'DOWN' as const, to: 5, toPort: 'UP' as const }, // 4
-        { from: 4, fromPort: 'RIGHT' as const, to: 6, toPort: 'LEFT' as const }, // 5: RIGHT→receiver
-        { from: 5, fromPort: 'DOWN' as const, to: 7, toPort: 'UP' as const }, // 6: DOWN→receiver
+        { from: 4, fromPort: 'RIGHT' as const, to: 6, toPort: 'LEFT' as const }, // 5: RIGHT→socket
+        { from: 5, fromPort: 'DOWN' as const, to: 7, toPort: 'UP' as const }, // 6: DOWN→socket
     ];
     const state: PuzzleState = { nodes, edges: edges as any, ringCount: 1, optimal: 0, virtualSize: 512 };
 
@@ -628,18 +628,18 @@ describe('regression: power flow + edge rendering', () => {
         expect(left.has(5)).toBe(false); // DOWN not fed
     });
 
-    it('diag rot=0: power UP→RIGHT continues through plain node to next edge/receiver', () => {
+    it('diag rot=0: power UP→RIGHT continues through plain node to next edge/socket', () => {
         // diag rot=0 pairs: (UP,RIGHT) and (DOWN,LEFT). Source enters UP → RIGHT.
         const { powered, poweredEdges } = calculatePowerResult(state, [0]);
         expect(powered.has(4)).toBe(true); // RIGHT plain node powered
-        expect(powered.has(6)).toBe(true); // receiver beyond RIGHT powered
+        expect(powered.has(6)).toBe(true); // socket beyond RIGHT powered
         // The wire feeding RIGHT must be green...
         expect(poweredEdges.has(3)).toBe(true); // edge junction→RIGHT
         // ...and the following edge from the plain RIGHT node must ALSO be green.
-        expect(poweredEdges.has(5)).toBe(true); // edge RIGHT→receiver
+        expect(poweredEdges.has(5)).toBe(true); // edge RIGHT→socket
         // The isolated DOWN/LEFT pair stays dark.
         expect(poweredEdges.has(4)).toBe(false); // junction→DOWN
-        expect(poweredEdges.has(6)).toBe(false); // DOWN→receiver
+        expect(poweredEdges.has(6)).toBe(false); // DOWN→socket
     });
 
     it('diag stub render matches transmission (right↔bottom lights only when fed)', () => {
@@ -659,9 +659,9 @@ describe('regression: power flow + edge rendering', () => {
         // T rot=0: UP,RIGHT,LEFT active. Power enters UP, exits RIGHT to plain node, then onward.
         const { powered, poweredEdges } = calculatePowerResult(tState, [0]);
         expect(powered.has(4)).toBe(true); // RIGHT plain
-        expect(powered.has(6)).toBe(true); // receiver beyond RIGHT
+        expect(powered.has(6)).toBe(true); // socket beyond RIGHT
         expect(poweredEdges.has(3)).toBe(true); // junction→RIGHT green
-        expect(poweredEdges.has(5)).toBe(true); // RIGHT→receiver green (the "next edge")
+        expect(poweredEdges.has(5)).toBe(true); // RIGHT→socket green (the "next edge")
         // DOWN inactive on T rot=0 → that branch dark
         expect(poweredEdges.has(4)).toBe(false);
         expect(poweredEdges.has(6)).toBe(false);

@@ -30,7 +30,7 @@ test.describe('Lab Circuit Puzzle', () => {
             let total = 0;
             let count = 0;
             for (let i = 0; i < state.nodes.length; i++) {
-                if (state.nodes[i].kind === 'receiver') {
+                if (state.nodes[i].kind === 'socket') {
                     total++;
                     if (powered.has(i)) count++;
                 }
@@ -134,7 +134,7 @@ test.describe('Lab Circuit Puzzle', () => {
                 const powered = el._calculatePower(state, rots);
                 let ok = true;
                 for (let ni = 0; ni < state.nodes.length; ni++) {
-                    if (state.nodes[ni].kind === 'receiver' && !powered.has(ni)) {
+                    if (state.nodes[ni].kind === 'socket' && !powered.has(ni)) {
                         ok = false;
                         break;
                     }
