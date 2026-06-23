@@ -556,6 +556,7 @@ export class PuzzleGenerator {
             this._wireCenter(centerIdx);
             this._wirePower(sourceIdx, cornerNodeIdx);
             this._promoteSockets(centerIdx);
+            this._removeOrphans();
             this._scaleCoords(virtualSize, pad);
 
             for (const n of this.nodes) {
@@ -621,18 +622,21 @@ export class PuzzleGenerator {
 
     private _wireRingSegments(): void {
         for (let r = 0; r < this.rc; r++) {
-            for (let p = 0; p < 8; p++) {
-                const np = (p + 1) % 8;
-                const aIdx = this.idxMap.get(`${r},${p}`)!;
-                const bIdx = this.idxMap.get(`${r},${np}`)!;
-                const idx = this.edges.length;
-                this.edges.push({
-                    idx,
-                    from: aIdx,
-                    fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
-                    to: bIdx,
-                    toPort: dirBetween(this.nodes[bIdx], this.nodes[aIdx]),
-                });
+            for (const cp of CORNER_POS) {
+                if (Math.random() < 0.35) continue;
+                for (const p of [cp, (cp - 1 + 8) % 8]) {
+                    const np = (p + 1) % 8;
+                    const aIdx = this.idxMap.get(`${r},${p}`)!;
+                    const bIdx = this.idxMap.get(`${r},${np}`)!;
+                    const idx = this.edges.length;
+                    this.edges.push({
+                        idx,
+                        from: aIdx,
+                        fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
+                        to: bIdx,
+                        toPort: dirBetween(this.nodes[bIdx], this.nodes[aIdx]),
+                    });
+                }
             }
         }
     }
@@ -703,6 +707,44 @@ export class PuzzleGenerator {
         for (const i of selected) {
             const n = this.nodes[i]!;
             this.nodes[i] = new Socket(i, n.x, n.y, 0);
+        }
+    }
+
+    private _removeOrphans(): void {
+        const deg = new Array(this.nodes.length).fill(0);
+        for (const e of this.edges) {
+            deg[e.from]++;
+            deg[e.to]++;
+        }
+        const orphans = new Set<number>();
+        for (let i = 0; i < deg.length; i++) if (!deg[i]) orphans.add(i);
+        if (!orphans.size) return;
+
+        const remap: number[] = [];
+        const live: Node[] = [];
+        for (let i = 0; i < this.nodes.length; i++) {
+            if (orphans.has(i)) {
+                remap[i] = -1;
+            } else {
+                const ni = live.length;
+                remap[i] = ni;
+                this.nodes[i].idx = ni;
+                live.push(this.nodes[i]);
+            }
+        }
+        this.nodes = live;
+
+        for (const e of this.edges) {
+            e.from = remap[e.from];
+            e.to = remap[e.to];
+        }
+
+        for (const [k, v] of this.idxMap) {
+            if (v < 0 || v >= remap.length || orphans.has(v)) {
+                this.idxMap.delete(k);
+            } else {
+                this.idxMap.set(k, remap[v]);
+            }
         }
     }
 
