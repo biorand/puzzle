@@ -44,8 +44,9 @@ function makeState(
     nodes: Node[],
     edges: Edge[],
     ringCount: number,
+    startRotations?: number[],
 ): CircuitState {
-    return { nodes, edges, ringCount, optimal: 0, virtualSize: 512 };
+    return { nodes, edges, ringCount, optimal: 0, virtualSize: 512, startRotations: startRotations ?? [] };
 }
 
 describe('activeDirs', () => {
@@ -287,7 +288,7 @@ describe('calculatePower', () => {
 
 describe('isEdgePowered', () => {
     function make(nodes: Node[], edges: Edge[], ringCount: number): CircuitState {
-        return { nodes, edges, ringCount, optimal: 0, virtualSize: 512 };
+        return { nodes, edges, ringCount, optimal: 0, virtualSize: 512, startRotations: [] };
     }
 
     it('T junc: edge through active port (UP) is powered', () => {
@@ -379,7 +380,7 @@ describe('regression: power flow + edge rendering', () => {
         { idx: 5, from: 4, fromPort: 'RIGHT', to: 6, toPort: 'LEFT' },
         { idx: 6, from: 5, fromPort: 'DOWN', to: 7, toPort: 'UP' },
     ];
-    const state: CircuitState = { nodes, edges, ringCount: 1, optimal: 0, virtualSize: 512 };
+    const state: CircuitState = { nodes, edges, ringCount: 1, optimal: 0, virtualSize: 512, startRotations: [] };
 
     it('diag rot=1 transmits power from RIGHT to DOWN (right→bottom pairing)', () => {
         const left = calculatePower(state, [1]);
@@ -410,7 +411,7 @@ describe('regression: power flow + edge rendering', () => {
         const tNodes = nodes.map((n) =>
             n instanceof Junction ? new Junction(n.idx, n.x, n.y, 0, n.ring, 'T') : n,
         );
-        const tState: CircuitState = { nodes: tNodes, edges, ringCount: 1, optimal: 0, virtualSize: 512 };
+        const tState: CircuitState = { nodes: tNodes, edges, ringCount: 1, optimal: 0, virtualSize: 512, startRotations: [] };
         const { powered, poweredEdges } = calculatePowerResult(tState, [0]);
         expect(powered.has(4)).toBe(true);
         expect(powered.has(6)).toBe(true);
@@ -418,6 +419,192 @@ describe('regression: power flow + edge rendering', () => {
         expect(poweredEdges.has(5)).toBe(true);
         expect(poweredEdges.has(4)).toBe(false);
         expect(poweredEdges.has(6)).toBe(false);
+    });
+});
+
+describe('serialized state resimulation', () => {
+    // Full 3-ring circuit: power source→node→junction(T,rot=0,ring=0)
+    // with junctions [4:T, 5:L, 6:L, 7:diag] on ring 0,
+    // junctions [10:T, 11:T, 12:diag, 13:diag] on ring 1,
+    // junctions [16:L, 17:diag, 18:diag, 19:T] on ring 2.
+    // Sockets at nodes 0, 15, 20. Power source at 22.
+    // All rotations = 0. Expected powered edges: {0,1,2,3,28,29}
+    const nodes: Node[] = [
+        new Socket(0, 0, 0, 0),
+        new Node(1, 0, 0, 0),
+        new Node(2, 0, 0, 0),
+        new Node(3, 0, 0, 0),
+        new Junction(4, 0, 0, 0, 0, 'T'),
+        new Junction(5, 0, 0, 0, 0, 'L'),
+        new Junction(6, 0, 0, 0, 0, 'L'),
+        new Junction(7, 0, 0, 0, 0, 'diag'),
+        new Node(8, 0, 0, 0),
+        new Node(9, 0, 0, 0),
+        new Junction(10, 0, 0, 0, 1, 'T'),
+        new Junction(11, 0, 0, 0, 1, 'T'),
+        new Junction(12, 0, 0, 0, 1, 'diag'),
+        new Junction(13, 0, 0, 0, 1, 'diag'),
+        new Node(14, 0, 0, 0),
+        new Socket(15, 0, 0, 0),
+        new Junction(16, 0, 0, 0, 2, 'L'),
+        new Junction(17, 0, 0, 0, 2, 'diag'),
+        new Junction(18, 0, 0, 0, 2, 'diag'),
+        new Junction(19, 0, 0, 0, 2, 'T'),
+        new Socket(20, 0, 0, 0),
+        new Node(21, 0, 0, 0),
+        new PowerSource(22, 0, 0, 0),
+    ];
+
+    const edges: Edge[] = [
+        { idx: 0, from: 0, fromPort: 'RIGHT', to: 4, toPort: 'LEFT' },
+        { idx: 1, from: 7, fromPort: 'UP', to: 0, toPort: 'DOWN' },
+        { idx: 2, from: 1, fromPort: 'DOWN', to: 5, toPort: 'UP' },
+        { idx: 3, from: 4, fromPort: 'RIGHT', to: 1, toPort: 'LEFT' },
+        { idx: 4, from: 2, fromPort: 'LEFT', to: 6, toPort: 'RIGHT' },
+        { idx: 5, from: 5, fromPort: 'DOWN', to: 2, toPort: 'UP' },
+        { idx: 6, from: 3, fromPort: 'UP', to: 7, toPort: 'DOWN' },
+        { idx: 7, from: 6, fromPort: 'LEFT', to: 3, toPort: 'RIGHT' },
+        { idx: 8, from: 8, fromPort: 'RIGHT', to: 10, toPort: 'LEFT' },
+        { idx: 9, from: 13, fromPort: 'UP', to: 8, toPort: 'DOWN' },
+        { idx: 10, from: 9, fromPort: 'UP', to: 13, toPort: 'DOWN' },
+        { idx: 11, from: 12, fromPort: 'LEFT', to: 9, toPort: 'RIGHT' },
+        { idx: 12, from: 14, fromPort: 'DOWN', to: 17, toPort: 'UP' },
+        { idx: 13, from: 16, fromPort: 'RIGHT', to: 14, toPort: 'LEFT' },
+        { idx: 14, from: 15, fromPort: 'UP', to: 19, toPort: 'DOWN' },
+        { idx: 15, from: 18, fromPort: 'LEFT', to: 15, toPort: 'RIGHT' },
+        { idx: 16, from: 4, fromPort: 'DOWN', to: 10, toPort: 'UP' },
+        { idx: 17, from: 5, fromPort: 'LEFT', to: 11, toPort: 'RIGHT' },
+        { idx: 18, from: 6, fromPort: 'UP', to: 12, toPort: 'DOWN' },
+        { idx: 19, from: 7, fromPort: 'RIGHT', to: 13, toPort: 'LEFT' },
+        { idx: 20, from: 10, fromPort: 'DOWN', to: 16, toPort: 'UP' },
+        { idx: 21, from: 11, fromPort: 'LEFT', to: 17, toPort: 'RIGHT' },
+        { idx: 22, from: 12, fromPort: 'UP', to: 18, toPort: 'DOWN' },
+        { idx: 23, from: 13, fromPort: 'RIGHT', to: 19, toPort: 'LEFT' },
+        { idx: 24, from: 19, fromPort: 'RIGHT', to: 20, toPort: 'LEFT' },
+        { idx: 25, from: 18, fromPort: 'UP', to: 20, toPort: 'DOWN' },
+        { idx: 26, from: 17, fromPort: 'LEFT', to: 20, toPort: 'RIGHT' },
+        { idx: 27, from: 16, fromPort: 'DOWN', to: 20, toPort: 'UP' },
+        { idx: 28, from: 22, fromPort: 'RIGHT', to: 21, toPort: 'LEFT' },
+        { idx: 29, from: 21, fromPort: 'DOWN', to: 4, toPort: 'UP' },
+    ];
+
+    const state: CircuitState = {
+        nodes,
+        edges,
+        ringCount: 3,
+        optimal: 0,
+        virtualSize: 512,
+        startRotations: [],
+    };
+
+    it('poweredEdges matches resimulation with all-zero rotations', () => {
+        const { powered, poweredEdges } = calculatePowerResult(state, [0, 0, 0]);
+        expect(poweredEdges).toMatchSnapshot();
+    });
+});
+
+describe('4-ring circuit from serialized state', () => {
+    // 4 rings, 32 nodes, 42 edges. Rotations: rings 0/1/2 = 0, ring 3 = 1.
+    // Ring 0: junctions 4(T),5(T),6(L),7(diag)
+    // Ring 1: junctions 12(L),13(diag),14(L),15(diag)
+    // Ring 2: junctions 18(diag),19(diag),20(diag),21(L)
+    // Ring 3: junctions 25(L),26(T),27(T),28(diag)
+    // Power source 31 → node 30 → junction 4 (ring 0)
+    // Center socket at 29 connected to 25, 27, 28
+    // Remaining sockets at 8, 10
+    const nodes: Node[] = [
+        new Node(0, 0, 0, 0),
+        new Node(1, 0, 0, 0),
+        new Node(2, 0, 0, 0),
+        new Node(3, 0, 0, 0),
+        new Junction(4, 0, 0, 0, 0, 'T'),
+        new Junction(5, 0, 0, 0, 0, 'T'),
+        new Junction(6, 0, 0, 0, 0, 'L'),
+        new Junction(7, 0, 0, 0, 0, 'diag'),
+        new Socket(8, 0, 0, 0),
+        new Node(9, 0, 0, 0),
+        new Socket(10, 0, 0, 0),
+        new Node(11, 0, 0, 0),
+        new Junction(12, 0, 0, 0, 1, 'L'),
+        new Junction(13, 0, 0, 0, 1, 'diag'),
+        new Junction(14, 0, 0, 0, 1, 'L'),
+        new Junction(15, 0, 0, 0, 1, 'diag'),
+        new Node(16, 0, 0, 0),
+        new Node(17, 0, 0, 0),
+        new Junction(18, 0, 0, 0, 2, 'diag'),
+        new Junction(19, 0, 0, 0, 2, 'diag'),
+        new Junction(20, 0, 0, 0, 2, 'diag'),
+        new Junction(21, 0, 0, 0, 2, 'L'),
+        new Node(22, 0, 0, 0),
+        new Node(23, 0, 0, 0),
+        new Node(24, 0, 0, 0),
+        new Junction(25, 0, 0, 0, 3, 'L'),
+        new Junction(26, 0, 0, 0, 3, 'T'),
+        new Junction(27, 0, 0, 0, 3, 'T'),
+        new Junction(28, 0, 0, 0, 3, 'diag'),
+        new Socket(29, 0, 0, 0),
+        new Node(30, 0, 0, 0),
+        new PowerSource(31, 0, 0, 0),
+    ];
+
+    const edges: Edge[] = [
+        { idx: 0, from: 0, fromPort: 'RIGHT', to: 4, toPort: 'LEFT' },
+        { idx: 1, from: 7, fromPort: 'UP', to: 0, toPort: 'DOWN' },
+        { idx: 2, from: 1, fromPort: 'DOWN', to: 5, toPort: 'UP' },
+        { idx: 3, from: 4, fromPort: 'RIGHT', to: 1, toPort: 'LEFT' },
+        { idx: 4, from: 2, fromPort: 'LEFT', to: 6, toPort: 'RIGHT' },
+        { idx: 5, from: 5, fromPort: 'DOWN', to: 2, toPort: 'UP' },
+        { idx: 6, from: 3, fromPort: 'UP', to: 7, toPort: 'DOWN' },
+        { idx: 7, from: 6, fromPort: 'LEFT', to: 3, toPort: 'RIGHT' },
+        { idx: 8, from: 8, fromPort: 'RIGHT', to: 12, toPort: 'LEFT' },
+        { idx: 9, from: 15, fromPort: 'UP', to: 8, toPort: 'DOWN' },
+        { idx: 10, from: 9, fromPort: 'DOWN', to: 13, toPort: 'UP' },
+        { idx: 11, from: 12, fromPort: 'RIGHT', to: 9, toPort: 'LEFT' },
+        { idx: 12, from: 10, fromPort: 'LEFT', to: 14, toPort: 'RIGHT' },
+        { idx: 13, from: 13, fromPort: 'DOWN', to: 10, toPort: 'UP' },
+        { idx: 14, from: 11, fromPort: 'UP', to: 15, toPort: 'DOWN' },
+        { idx: 15, from: 14, fromPort: 'LEFT', to: 11, toPort: 'RIGHT' },
+        { idx: 16, from: 16, fromPort: 'RIGHT', to: 18, toPort: 'LEFT' },
+        { idx: 17, from: 21, fromPort: 'UP', to: 16, toPort: 'DOWN' },
+        { idx: 18, from: 17, fromPort: 'LEFT', to: 20, toPort: 'RIGHT' },
+        { idx: 19, from: 19, fromPort: 'DOWN', to: 17, toPort: 'UP' },
+        { idx: 20, from: 22, fromPort: 'RIGHT', to: 25, toPort: 'LEFT' },
+        { idx: 21, from: 28, fromPort: 'UP', to: 22, toPort: 'DOWN' },
+        { idx: 22, from: 23, fromPort: 'LEFT', to: 27, toPort: 'RIGHT' },
+        { idx: 23, from: 26, fromPort: 'DOWN', to: 23, toPort: 'UP' },
+        { idx: 24, from: 24, fromPort: 'UP', to: 28, toPort: 'DOWN' },
+        { idx: 25, from: 27, fromPort: 'LEFT', to: 24, toPort: 'RIGHT' },
+        { idx: 26, from: 4, fromPort: 'DOWN', to: 12, toPort: 'UP' },
+        { idx: 27, from: 5, fromPort: 'LEFT', to: 13, toPort: 'RIGHT' },
+        { idx: 28, from: 6, fromPort: 'UP', to: 14, toPort: 'DOWN' },
+        { idx: 29, from: 7, fromPort: 'RIGHT', to: 15, toPort: 'LEFT' },
+        { idx: 30, from: 12, fromPort: 'DOWN', to: 18, toPort: 'UP' },
+        { idx: 31, from: 13, fromPort: 'LEFT', to: 19, toPort: 'RIGHT' },
+        { idx: 32, from: 14, fromPort: 'UP', to: 20, toPort: 'DOWN' },
+        { idx: 33, from: 15, fromPort: 'RIGHT', to: 21, toPort: 'LEFT' },
+        { idx: 34, from: 18, fromPort: 'DOWN', to: 25, toPort: 'UP' },
+        { idx: 35, from: 19, fromPort: 'LEFT', to: 26, toPort: 'RIGHT' },
+        { idx: 36, from: 20, fromPort: 'UP', to: 27, toPort: 'DOWN' },
+        { idx: 37, from: 21, fromPort: 'RIGHT', to: 28, toPort: 'LEFT' },
+        { idx: 38, from: 25, fromPort: 'DOWN', to: 29, toPort: 'UP' },
+        { idx: 39, from: 27, fromPort: 'UP', to: 29, toPort: 'DOWN' },
+        { idx: 40, from: 28, fromPort: 'RIGHT', to: 29, toPort: 'LEFT' },
+        { idx: 41, from: 31, fromPort: 'RIGHT', to: 30, toPort: 'LEFT' },
+        { idx: 42, from: 30, fromPort: 'DOWN', to: 4, toPort: 'UP' },
+    ];
+
+    const state: CircuitState = {
+        nodes,
+        edges,
+        ringCount: 4,
+        optimal: 0,
+        virtualSize: 512,
+        startRotations: [],
+    };
+
+    it('poweredEdges matches resimulation with rotations [0,0,0,1]', () => {
+        const { poweredEdges } = calculatePowerResult(state, [0, 0, 0, 1]);
+        expect(poweredEdges).toMatchSnapshot();
     });
 });
 

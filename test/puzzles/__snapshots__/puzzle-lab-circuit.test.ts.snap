@@ -1,0 +1,26 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`4-ring circuit from serialized state > poweredEdges matches resimulation with rotations [0,0,0,1] 1`] = `
+Set {
+  0,
+  1,
+  2,
+  3,
+  10,
+  11,
+  27,
+  41,
+  42,
+}
+`;
+
+exports[`serialized state resimulation > poweredEdges matches resimulation with all-zero rotations 1`] = `
+Set {
+  0,
+  1,
+  2,
+  3,
+  28,
+  29,
+}
+`;

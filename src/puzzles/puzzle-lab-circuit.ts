@@ -22,6 +22,7 @@ export interface CircuitState {
     ringCount: number;
     optimal: number;
     virtualSize: number;
+    startRotations: number[];
 }
 
 export interface DrawContext {
@@ -116,6 +117,19 @@ function diagPartnerDir(rot: number, dir: Dir): Dir | null {
     for (const [a, b] of activePairs('diag', rot)) {
         if (a === dir) return b;
         if (b === dir) return a;
+    }
+    return null;
+}
+
+/** Find the port that `neighbor` uses to connect to `nodeIdx`. */
+function _neighborPort(
+    nodeIdx: number,
+    neighbor: number,
+    portMap: Map<string, number[]>,
+): Dir | null {
+    for (const dir of PORT_ORDER) {
+        const nbs = portMap.get(`${neighbor},${dir}`);
+        if (nbs && nbs.includes(nodeIdx)) return dir;
     }
     return null;
 }
@@ -363,6 +377,12 @@ function buildPortMap(edges: Edge[]): Map<string, number[]> {
     return portMap;
 }
 
+/** Check whether a node's port is active (not blocked by rotation). */
+function _portActive(node: Node, port: Dir, rots: number[]): boolean {
+    if (!(node instanceof Junction)) return true;
+    return activeDirs(node.jType, rots[node.ring]).includes(port);
+}
+
 function applyJunctionRewiring(
     state: CircuitState,
     rots: number[],
@@ -378,8 +398,23 @@ function applyJunctionRewiring(
             for (const [dirA, dirB] of pairs) {
                 const neighborsA = portMap.get(`${i},${dirA}`) || [];
                 const neighborsB = portMap.get(`${i},${dirB}`) || [];
-                for (const na of neighborsA) {
-                    for (const nb of neighborsB) {
+                // Only bridge neighbors whose connecting port on their side is active.
+                // Otherwise power could "leak" through a neighboring junction's
+                // inactive port (e.g. an L piece whose DOWN port faces a diag).
+                const activeA = neighborsA.filter((na) => {
+                    const e = edgeMap.get(`${i},${na}`);
+                    if (!e) return false;
+                    const nbPort: Dir = e.from === i ? e.toPort : e.fromPort;
+                    return _portActive(state.nodes[na], nbPort, rots);
+                });
+                const activeB = neighborsB.filter((nb) => {
+                    const e = edgeMap.get(`${i},${nb}`);
+                    if (!e) return false;
+                    const nbPort: Dir = e.from === i ? e.toPort : e.fromPort;
+                    return _portActive(state.nodes[nb], nbPort, rots);
+                });
+                for (const na of activeA) {
+                    for (const nb of activeB) {
                         if (na === nb) continue;
                         adj.get(na)!.add(nb);
                         adj.get(nb)!.add(na);
@@ -387,9 +422,17 @@ function applyJunctionRewiring(
                 }
             }
             const ns = [...(adj.get(i) || [])];
+            const portNeighbors = new Set<number>();
+            for (const dir of PORT_ORDER) {
+                for (const nb of portMap.get(`${i},${dir}`) || []) {
+                    portNeighbors.add(nb);
+                }
+            }
             for (const j of ns) {
                 adj.get(i)!.delete(j);
-                adj.get(j)!.delete(i);
+                if (portNeighbors.has(j)) {
+                    adj.get(j)!.delete(i);
+                }
             }
         } else {
             const active = activeDirs(n.jType, rots[n.ring]);
@@ -437,7 +480,43 @@ function deriveEdges(
         const a = state.nodes[e.from].conductsPower(e.fromPort, powered, rots, portMap);
         const b = state.nodes[e.to].conductsPower(e.toPort, powered, rots, portMap);
         if (a && b) poweredEdges.add(ei);
-        if (a || b) visitedEdges.add(ei);
+        if (a || b) {
+            // An edge is "visited" (energized) if at least one endpoint can
+            // deliver power through this connection. However, a diag junction
+            // may report conduction because it "sees" a powered neighbor on
+            // a paired port — but that neighbor's connecting port might be
+            // inactive (e.g. an L piece facing the diag with an inactive port).
+            // We cross-check: if a diag is the only conducting side, verify
+            // the power actually flows through an active port on the neighbor.
+            let edgeHasPower = false;
+            for (const [ni, port] of [
+                [e.from, e.fromPort] as [number, Dir],
+                [e.to, e.toPort] as [number, Dir],
+            ]) {
+                const n = state.nodes[ni];
+                if (n instanceof Junction && n.jType === 'diag') {
+                    // Diag: check that at least one neighbor on this port
+                    // or its partner is powered through an active port.
+                    const partner = diagPartnerDir(rots[n.ring], port);
+                    for (const checkPort of partner
+                        ? ([port, partner] as Dir[])
+                        : ([port] as Dir[])) {
+                        for (const nb of portMap.get(`${ni},${checkPort}`) || []) {
+                            if (!powered.has(nb)) continue;
+                            const nbPort = _neighborPort(ni, nb, portMap);
+                            if (nbPort && !_portActive(state.nodes[nb], nbPort, rots)) continue;
+                            edgeHasPower = true;
+                            break;
+                        }
+                        if (edgeHasPower) break;
+                    }
+                } else if (n.conductsPower(port, powered, rots, portMap)) {
+                    edgeHasPower = true;
+                }
+                if (edgeHasPower) break;
+            }
+            if (edgeHasPower) visitedEdges.add(ei);
+        }
     }
     return { poweredEdges, visitedEdges };
 }
@@ -460,7 +539,7 @@ export function calculatePower(state: CircuitState, rots: number[]): Set<number>
     return calculatePowerResult(state, rots).powered;
 }
 
-function solveOptimal(state: CircuitState): number[] | null {
+function solveOptimal(state: CircuitState, startRots: number[] = []): number[] | null {
     const R = state.ringCount;
     const total = 1 << (2 * R);
     let best: number[] | null = null;
@@ -475,7 +554,9 @@ function solveOptimal(state: CircuitState): number[] | null {
             tmp >>= 2;
         }
         if (clicks >= bestT) continue;
-        const p = calculatePower(state, rots);
+        const effective =
+            startRots.length > 0 ? rots.map((rot, ri) => (rot + startRots[ri]) % 4) : rots;
+        const p = calculatePower(state, effective);
         let ok = true;
         for (let ni = 0; ni < state.nodes.length; ni++) {
             if (state.nodes[ni] instanceof Socket && !p.has(ni)) {
@@ -557,6 +638,7 @@ export class PuzzleGenerator {
             this._wirePower(sourceIdx, cornerNodeIdx);
             this._promoteSockets(centerIdx);
             this._removeOrphans();
+            if (!this._validateJunctions()) continue;
             this._scaleCoords(virtualSize, pad);
 
             for (const n of this.nodes) {
@@ -574,11 +656,16 @@ export class PuzzleGenerator {
                 ringCount: this.rc,
                 optimal: 0,
                 virtualSize,
+                startRotations: [],
             };
-            if (isSolved(state, calculatePower(state, new Array(this.rc).fill(0)))) continue;
-            const opt = solveOptimal(state);
+            const baseOpt = solveOptimal(state);
+            if (!baseOpt || baseOpt.reduce((a, b) => a + b, 0) <= 0) continue;
+            const startRots = Array.from({ length: this.rc }, () => (Math.random() * 4) | 0);
+            if (isSolved(state, calculatePower(state, startRots))) continue;
+            const opt = solveOptimal(state, startRots);
             if (!opt || opt.reduce((a, b) => a + b, 0) <= 0) continue;
             state.optimal = opt.reduce((a, b) => a + b, 0);
+            state.startRotations = startRots;
             return state;
         }
         return null;
@@ -748,6 +835,24 @@ export class PuzzleGenerator {
         }
     }
 
+    private _validateJunctions(): boolean {
+        for (const n of this.nodes) {
+            if (!(n instanceof Junction)) continue;
+            const ports: Dir[] = [];
+            for (const e of this.edges) {
+                if (e.from === n.idx) ports.push(e.fromPort);
+                if (e.to === n.idx) ports.push(e.toPort);
+            }
+            if (ports.length < 2) return false;
+            if (ports.length === 2 && n.jType !== 'T') {
+                const i1 = PORT_ORDER.indexOf(ports[0]);
+                const i2 = PORT_ORDER.indexOf(ports[1]);
+                if (Math.abs(i1 - i2) === 2) return false;
+            }
+        }
+        return true;
+    }
+
     private _scaleCoords(virtualSize: number, pad: number): void {
         let minX = Infinity,
             minY = Infinity,
@@ -847,7 +952,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         } while (hash === PuzzleLabCircuit._lastHash);
         PuzzleLabCircuit._lastHash = hash;
         this._circuitState = state!;
-        this._rotations = new Array(state!.ringCount).fill(0);
+        this._rotations = [...state!.startRotations];
         this._moves = 0;
         this._optimal = state!.optimal;
         this._playing = false;
@@ -858,7 +963,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
 
     private _resetPuzzle(): void {
         if (!this._circuitState) return;
-        this._rotations = new Array(this._circuitState.ringCount).fill(0);
+        this._rotations = [...this._circuitState.startRotations];
         this._moves = 0;
         this._playing = false;
         this._completionAnimating = false;
@@ -950,6 +1055,16 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         };
         for (const n of this._circuitState.nodes) {
             n.draw(ctx, dctx);
+        }
+
+        // Draw node index labels
+        ctx.fillStyle = '#1a8a33';
+        ctx.font = '8px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.shadowBlur = 0;
+        for (const n of this._circuitState.nodes) {
+            ctx.fillText(String(n.idx), n.x + n.radius + 2, n.y + n.radius - 6);
         }
 
         ctx.restore();
@@ -1056,6 +1171,71 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
         );
     }
 
+    private _serializeState(): string {
+        if (!this._circuitState) return 'null';
+        const s = this._circuitState;
+        const rots = this._rotations;
+        const portMap = buildPortMap(s.edges);
+        return JSON.stringify(
+            {
+                nodes: s.nodes.map((n) => {
+                    const base: Record<string, unknown> = {};
+                    if (n instanceof Junction) {
+                        base.type = 'junction';
+                        base.rotation = rots[n.ring];
+                        base.jType = n.jType;
+                    } else if (n instanceof Socket) {
+                        base.type = 'socket';
+                    } else if (n instanceof PowerSource) {
+                        base.type = 'power-source';
+                    } else {
+                        base.type = 'node';
+                    }
+                    return base;
+                }),
+                edges: s.edges.map((e) => ({
+                    a: e.from,
+                    aPort: e.fromPort.toLowerCase(),
+                    b: e.to,
+                    bPort: e.toPort.toLowerCase(),
+                    powered: (() => {
+                        const aOk = s.nodes[e.from].conductsPower(
+                            e.fromPort,
+                            this._powered,
+                            rots,
+                            portMap,
+                        );
+                        const bOk = s.nodes[e.to].conductsPower(
+                            e.toPort,
+                            this._powered,
+                            rots,
+                            portMap,
+                        );
+                        return aOk && bOk;
+                    })(),
+                })),
+            },
+            null,
+            4,
+        );
+    }
+
+    private async _copyState(): Promise<void> {
+        const text = this._serializeState();
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            // Fallback for insecure context
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;left:-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+    }
+
     render() {
         return html`<div id="lab-circuit-wrap">
             <canvas
@@ -1064,6 +1244,7 @@ export class PuzzleLabCircuit extends LitElement implements PuzzleLitElement {
                 @mousemove=${this._onCanvasMove}
                 @mouseleave=${this._onCanvasLeave}
             ></canvas>
+            <button id="lab-circuit-copy-btn" @click=${this._copyState}>Copy state</button>
         </div>`;
     }
 
