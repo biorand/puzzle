@@ -32,12 +32,16 @@ This runs format + lint + unit tests + e2e tests to ensure nothing is broken.
 | `npm run lint`         | Lint TypeScript source with ESLint    |
 | `npm run lint:fix`     | Lint and auto-fix issues              |
 
-## Maintenance Loop
+## Maintenance Loops
 
-A scheduled loop runs every Monday at 6 AM UTC via GitHub Actions (`.github/workflows/maintenance.yml`).
-It audits dependencies, scans for TODO/FIXME markers, and opens issues for new findings.
-The skill lives at `.opencode/skills/maintenance/SKILL.md`. The spine file `progress.md` tracks
-what was reported so it never duplicates.
+Two scheduled loops run weekly via GitHub Actions:
+
+| Workflow                            | Day     | Skill                                   | What it does                                                 |
+| ----------------------------------- | ------- | --------------------------------------- | ------------------------------------------------------------ |
+| `.github/workflows/maintenance.yml` | Monday  | `.opencode/skills/maintenance/SKILL.md` | Audits deps, scans TODOs, opens issues                       |
+| `.github/workflows/triage.yml`      | Tuesday | `.opencode/skills/triage-fix/SKILL.md`  | Addresses PR feedback, groups & fixes open issues, opens PRs |
+
+The spine file `progress.md` tracks what was reported and what's in progress so nothing is duplicated or re-attempted.
 
 ## Architecture
 

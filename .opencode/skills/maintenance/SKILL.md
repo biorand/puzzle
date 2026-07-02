@@ -97,6 +97,15 @@ When all issues are opened, write the updated `progress.md`:
 
 ## Outdated dependencies
 {list of outdated packages, one per line}
+
+## Open PRs
+{list of open PRs, one per line with number + title + status}
+
+## In progress
+{list of items currently being worked on}
+
+## Open / needs a human
+{list of items that need human attention}
 ```
 
 Overwrite the entire file with the new content. This is the file next week's run will read.
