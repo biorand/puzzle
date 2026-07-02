@@ -32,6 +32,13 @@ This runs format + lint + unit tests + e2e tests to ensure nothing is broken.
 | `npm run lint`         | Lint TypeScript source with ESLint    |
 | `npm run lint:fix`     | Lint and auto-fix issues              |
 
+## Maintenance Loop
+
+A scheduled loop runs every Monday at 6 AM UTC via GitHub Actions (`.github/workflows/maintenance.yml`).
+It audits dependencies, scans for TODO/FIXME markers, and opens issues for new findings.
+The skill lives at `.opencode/skills/maintenance/SKILL.md`. The spine file `progress.md` tracks
+what was reported so it never duplicates.
+
 ## Architecture
 
 - **`src/components/repuzzles-app.ts`** — root LitElement, hash router, owns PuzzleContext

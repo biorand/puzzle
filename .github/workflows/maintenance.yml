@@ -1,0 +1,36 @@
+name: Weekly Maintenance Audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday at 6 AM UTC
+  workflow_dispatch:      # allow manual trigger too
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_AUTH_CONTENT: '{"opencode-go":{"type":"api","key":"${{ secrets.OPENCODE_GO_API_KEY }}"}}'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode-go/deepseek-v4-flash
+          use_github_token: true
+          prompt: |
+            Run the maintenance skill.
