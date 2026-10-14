@@ -28,6 +28,16 @@ test.describe('Main Menu', () => {
         await expect(page.locator('puzzle-select #menu-grid .menu-card')).toHaveCount(9);
     });
 
+    test('melody composer button navigates to the melody page and back', async ({ page }) => {
+        await page.locator('#menu-melody-btn').click();
+        await expect(page.locator('melody-composer')).toBeVisible();
+        await expect(page).toHaveURL(/#\/melody/);
+
+        await page.locator('#back-btn').click();
+        await expect(page.locator('#menu')).toBeVisible();
+        await expect(page).toHaveURL(/#\/?$/);
+    });
+
     test('new run navigates to random run', async ({ page }) => {
         const btn = page.locator('.menu-run-btn').filter({ hasText: 'New Run' });
         await btn.click();

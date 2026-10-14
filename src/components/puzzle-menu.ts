@@ -17,6 +17,10 @@ export class PuzzleMenu extends LitElement {
         this.dispatchEvent(new CustomEvent('quick-play', { bubbles: true, composed: true }));
     }
 
+    private _onMelody(): void {
+        this.dispatchEvent(new CustomEvent('melody', { bubbles: true, composed: true }));
+    }
+
     render() {
         return html`
             <div id="menu">
@@ -36,6 +40,7 @@ export class PuzzleMenu extends LitElement {
                         <span class="menu-run-btn-label">Quick Play</span>
                     </button>
                 </div>
+                <button id="menu-melody-btn" @click=${this._onMelody}>Melody Composer</button>
             </div>
         `;
     }

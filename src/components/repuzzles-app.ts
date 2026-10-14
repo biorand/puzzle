@@ -210,6 +210,10 @@ export class RepuzzlesApp extends LitElement {
         location.hash = '#/quickplay';
     }
 
+    private _onMelody(): void {
+        location.hash = '#/melody';
+    }
+
     private _onPuzzleSelect(id: string): void {
         const mod = puzzles.get(id);
         if (!mod) return;
@@ -476,6 +480,7 @@ export class RepuzzlesApp extends LitElement {
                 @vanilla-run=${this._onVanillaRun}
                 @random-run=${this._onRandomRun}
                 @quick-play=${this._onQuickPlay}
+                @melody=${this._onMelody}
             ></puzzle-menu>
         `;
     }
