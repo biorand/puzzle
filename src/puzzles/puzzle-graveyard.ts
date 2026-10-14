@@ -161,6 +161,7 @@ export class PuzzleGraveyard extends PuzzleBase {
         this._moves++;
         this._pointerAngle += (step / N) * 360;
         playTone(this._pos / N);
+        this._sendStatus(this._moves, this._optimal);
 
         setTimeout(() => {
             this._moving = false;

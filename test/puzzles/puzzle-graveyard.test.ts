@@ -58,6 +58,22 @@ describe('puzzle-graveyard', () => {
         document.body.removeChild(el);
     });
 
+    it('dispatches puzzle-status with updated moves when a step is pressed', async () => {
+        const el = document.createElement('puzzle-graveyard') as PuzzleGraveyard;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const spy = vi.fn();
+        el.addEventListener('puzzle-status', spy);
+        el.querySelector<HTMLButtonElement>('.graveyard-btn[data-step="3"]')!.click();
+
+        expect(spy).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: expect.objectContaining({ moves: 1 }) }),
+        );
+
+        document.body.removeChild(el);
+    });
+
     it('dispatches puzzle-actions on creation', async () => {
         const el = document.createElement('puzzle-graveyard') as PuzzleGraveyard;
         const spy = vi.fn();
