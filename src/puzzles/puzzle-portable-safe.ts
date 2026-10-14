@@ -61,7 +61,7 @@ export class PuzzlePortableSafe extends PuzzleBase {
         this._startIdx = -1;
         this._moves = 0;
         this._playing = false;
-        this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+        this._sendStatus(this._moves, NUM_BTNS);
     }
 
     private _resetPuzzle(): void {
@@ -69,7 +69,7 @@ export class PuzzlePortableSafe extends PuzzleBase {
         this._startIdx = -1;
         this._moves = 0;
         this._playing = false;
-        this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+        this._sendStatus(this._moves, NUM_BTNS);
     }
 
     private _inChain(i: number): boolean {
@@ -92,21 +92,21 @@ export class PuzzlePortableSafe extends PuzzleBase {
             this._chain = 1;
             this._moves++;
             playTone(this._chain / NUM_BTNS);
-            this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+            this._sendStatus(this._moves, NUM_BTNS);
         } else {
             const expected = (this._startIdx + this._chain) % NUM_BTNS;
             if (lightIdx === expected) {
                 this._chain++;
                 this._moves++;
                 playTone(this._chain / NUM_BTNS);
-                this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+                this._sendStatus(this._moves, NUM_BTNS);
                 if (this._chain === NUM_BTNS) this._completePuzzle();
             } else {
                 this._startIdx = lightIdx;
                 this._chain = 1;
                 this._moves++;
                 playTone(this._chain / NUM_BTNS);
-                this._sendStatus(this._moves, NUM_BTNS * 2 - 2);
+                this._sendStatus(this._moves, NUM_BTNS);
             }
         }
     }

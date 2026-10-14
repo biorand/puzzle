@@ -59,6 +59,21 @@ describe('puzzle-portable-safe', () => {
         document.body.removeChild(el);
     });
 
+    it('reports the true minimum of 8 presses as optimal', async () => {
+        const el = document.createElement('puzzle-portable-safe') as PuzzlePortableSafe;
+        const spy = vi.fn();
+        el.addEventListener('puzzle-status', spy);
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        // One press per button is required and sufficient to build the chain
+        expect(spy).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: expect.objectContaining({ optimal: 8 }) }),
+        );
+
+        document.body.removeChild(el);
+    });
+
     it('clicking a button dispatches status with incremented moves', async () => {
         const el = document.createElement('puzzle-portable-safe') as PuzzlePortableSafe;
         document.body.appendChild(el);

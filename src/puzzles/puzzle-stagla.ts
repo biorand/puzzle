@@ -12,7 +12,26 @@ const TOGGLES: number[][] = [
 ];
 
 const LABELS = ['A', 'B', 'C', 'D'] as const;
-const OPTIMAL_MAP = [3, 2, 2, 3];
+
+const TOGGLE_MASKS = TOGGLES.map((ts) => ts.reduce((m, t) => m | (1 << t), 0));
+
+function minPresses(lights: boolean[], target: number): number {
+    const stateMask = lights.reduce((m, on, i) => (on ? m | (1 << i) : m), 0);
+    const wanted = stateMask ^ (1 << target);
+    let best = Infinity;
+    for (let subset = 0; subset < 1 << TOGGLE_MASKS.length; subset++) {
+        let xor = 0;
+        let count = 0;
+        for (let i = 0; i < TOGGLE_MASKS.length; i++) {
+            if (subset & (1 << i)) {
+                xor ^= TOGGLE_MASKS[i];
+                count++;
+            }
+        }
+        if (xor === wanted && count < best) best = count;
+    }
+    return best;
+}
 
 export class PuzzleStagla extends PuzzleBase {
     @state() private _lights: boolean[] = [];
@@ -43,10 +62,10 @@ export class PuzzleStagla extends PuzzleBase {
             } while (state.every((v, j) => v === (j === this._stageTargets[i])));
             this._stageInitialStates[i] = state;
         }
-        this._optimal =
-            OPTIMAL_MAP[this._stageTargets[0]] +
-            OPTIMAL_MAP[this._stageTargets[1]] +
-            OPTIMAL_MAP[this._stageTargets[2]];
+        this._optimal = 0;
+        for (let i = 0; i < 3; i++) {
+            this._optimal += minPresses(this._stageInitialStates[i], this._stageTargets[i]);
+        }
     }
 
     _newPuzzle(): void {

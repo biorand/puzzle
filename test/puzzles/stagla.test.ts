@@ -122,6 +122,42 @@ describe('puzzle-stagla', () => {
         );
     });
 
+    it('reports the true minimum number of presses as optimal', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const stageInitialStates = (el as any)._stageInitialStates as boolean[][];
+        const stageTargets = (el as any)._stageTargets as number[];
+        const TOGGLES: number[][] = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3]];
+
+        function minPressesFor(lights: boolean[], target: number): number {
+            let best = Infinity;
+            for (let mask = 0; mask < 16; mask++) {
+                const result = [...lights];
+                let count = 0;
+                for (let b = 0; b < 4; b++) {
+                    if (mask & (1 << b)) {
+                        count++;
+                        for (const t of TOGGLES[b]) result[t] = !result[t];
+                    }
+                }
+                if (count >= best) continue;
+                const solved = result.every((v, i) => v === (i === target));
+                if (solved) best = count;
+            }
+            return best;
+        }
+
+        const expected =
+            minPressesFor(stageInitialStates[0], stageTargets[0]) +
+            minPressesFor(stageInitialStates[1], stageTargets[1]) +
+            minPressesFor(stageInitialStates[2], stageTargets[2]);
+
+        expect((el as any)._optimal).toBe(expected);
+        expect(expected).toBeGreaterThanOrEqual(3);
+    });
+
     it('all 3 circles light up as each stage completes (regression: 3rd circle)', async () => {
         const el = document.createElement('puzzle-stagla') as PuzzleStagla;
         document.body.appendChild(el);
