@@ -301,15 +301,9 @@ export class RepuzzlesApp extends LitElement {
                 if (newStep < 5) {
                     this._activeTutorialStep = newStep;
                     this._activeForceDifficulty = [1, 1, 2, 2, 3][newStep];
-                    (puzzleEl as unknown as Record<string, unknown>).tutorialStep =
-                        this._activeTutorialStep;
-                    (puzzleEl as unknown as Record<string, unknown>).forceDifficulty =
-                        this._activeForceDifficulty;
                 } else {
                     this._activeTutorialStep = undefined;
                     this._activeForceDifficulty = undefined;
-                    (puzzleEl as unknown as Record<string, unknown>).tutorialStep = undefined;
-                    (puzzleEl as unknown as Record<string, unknown>).forceDifficulty = undefined;
                     if (this._getProgress() < 1) this._setProgress(1);
                 }
             }
@@ -371,18 +365,15 @@ export class RepuzzlesApp extends LitElement {
         const tagName = RepuzzlesApp._PUZZLE_TAGS[this._activePuzzleId ?? ''];
         if (!tagName) return null;
         const tag = unsafeStatic(tagName);
-        const extra =
-            this._activePuzzleId === 'keypad'
-                ? html`.tutorialStep=${this._activeTutorialStep}
-                  .forceDifficulty=${this._activeForceDifficulty}`
-                : nothing;
+        const isKeypad = this._activePuzzleId === 'keypad';
         return html`
             <${tag}
                 @puzzle-status=${this._onPuzzleStatus}
                 @puzzle-actions=${this._onPuzzleActions}
                 @puzzle-complete=${this._onPuzzleComplete}
                 @cheat-unlock-all=${this._onCheatUnlock}
-                ${extra}
+                .tutorialStep=${isKeypad ? this._activeTutorialStep : nothing}
+                .forceDifficulty=${isKeypad ? this._activeForceDifficulty : nothing}
             ></${tag}>`;
     }
 

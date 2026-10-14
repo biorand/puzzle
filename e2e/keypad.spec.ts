@@ -7,6 +7,31 @@ test.describe('Keypad Puzzle', () => {
         await page.evaluate(() => localStorage.clear());
     });
 
+    test('fresh player sees step 1 of the tutorial with forced difficulty', async ({ page }) => {
+        await page.goto('/#/re1/keypad');
+        await page.waitForSelector('#keypad');
+
+        const tutorial = page.locator('#keypad-tutorial');
+        await expect(tutorial).toBeVisible();
+        await expect(tutorial).toContainText('Tutorial 1/5');
+        await expect(tutorial).toContainText('Solve in 1 move');
+        await expect(page.locator('#optimal-num')).toHaveText('1');
+
+        // Solve the forced 1-move puzzle
+        const cellIdx = await page.evaluate(() => {
+            const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
+            const el = document.querySelector('puzzle-keypad') as unknown as { _state: number };
+            for (let i = 0; i < 9; i++) if ((el._state ^ MASKS[i]) === 0x1ff) return i;
+            return -1;
+        });
+        expect(cellIdx).toBeGreaterThanOrEqual(0);
+        await page.locator(`.cell[data-idx="${cellIdx}"]`).click();
+
+        // After the completion animation and regeneration, step 2 keeps forcing 1 move
+        await expect(tutorial).toContainText('Tutorial 2/5', { timeout: 10000 });
+        await expect(page.locator('#optimal-num')).toHaveText('1');
+    });
+
     test('cheat-unlock-all overlay shows CHEAT ACTIVATED and ALL PUZZLES, then navigates home', async ({
         page,
     }) => {
