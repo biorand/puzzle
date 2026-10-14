@@ -225,6 +225,10 @@ export class PuzzlePlant43 extends PuzzleBase {
 
         if (isWin(this._currentState, this._puzzleConfig.targetFill)) {
             this._won = true;
+            this._playing = true;
+            // Block input immediately so a stale Reset/New click cannot zero
+            // the recorded moves while the winning pour animates.
+            this._syncActions();
             await sleep(delay);
             this._animating = false;
             await this._drainAnimation();

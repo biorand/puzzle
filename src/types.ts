@@ -6,7 +6,7 @@ export interface StatusInfo {
 
 export interface ActionButton {
     label: string;
-    handler: () => void;
+    handler?: () => void;
 }
 
 export interface PuzzleContext {

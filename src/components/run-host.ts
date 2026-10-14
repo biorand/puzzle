@@ -159,7 +159,12 @@ export class RunHost extends LitElement {
 
     private _onPuzzleActions(e: CustomEvent): void {
         const buttons = e.detail as ActionButton[];
-        if (buttons.length === 0) return; // keep current buttons during completion animation
+        if (buttons.length === 0) {
+            // The puzzle is playing its completion animation. Keep the buttons
+            // visible but inert so stale handlers cannot corrupt the result.
+            this._actions = this._actions.map((b) => ({ label: b.label }));
+            return;
+        }
         if (this.mode === 'vanilla') {
             this._actions = buttons.filter((b) => b.label !== 'New Puzzle');
         } else {

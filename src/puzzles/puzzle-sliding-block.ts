@@ -167,6 +167,10 @@ export class PuzzleSlidingBlock extends PuzzleBase {
         playTone(val / SIZE);
         this._sendStatus(this._moves, this._optimal);
         if (this._board.join(',') === GOAL_STR) {
+            // Block input immediately so a stale Reset/New click cannot zero
+            // the recorded moves before the completion animation finishes.
+            this._playing = true;
+            this._syncActions();
             setTimeout(() => this._completePuzzle(), 200);
         }
     }

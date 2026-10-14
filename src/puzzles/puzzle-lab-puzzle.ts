@@ -156,6 +156,10 @@ export class PuzzleLabPuzzle extends PuzzleBase {
 
         const powered = tracePower(this._grid, this._colorPresses);
         if (isSolved(powered, this._grid, this._colorPresses)) {
+            // Block input immediately so a stale Reset/New click cannot zero
+            // the recorded moves before the completion animation finishes.
+            this._playing = true;
+            this._syncActions();
             setTimeout(() => this._completePuzzle(), 300);
         }
     }

@@ -71,6 +71,36 @@ test.describe('Run Mode', () => {
     expect(changed).toBe(true);
   });
 
+  test('reset is inert during completion and cannot corrupt the result', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => (location.hash = '#/run/vanilla'));
+    await page.waitForTimeout(1500);
+    await expect(page.locator('puzzle-keypad')).toBeVisible();
+
+    // Vanilla config 1 is a forced 1-move keypad puzzle
+    const cellIdx = await page.evaluate(() => {
+      const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
+      const kp = document.querySelector('puzzle-keypad') as any;
+      for (let i = 0; i < 9; i++) if ((kp._state ^ MASKS[i]) === 0x1ff) return i;
+      return -1;
+    });
+    expect(cellIdx).toBeGreaterThanOrEqual(0);
+    await page.locator(`.cell[data-idx="${cellIdx}"]`).click();
+
+    // During the completion animation the footer buttons must be inert
+    await expect(page.locator('app-footer button').nth(3)).toBeDisabled({ timeout: 1500 });
+
+    // The run must advance to config 2 with the real move count recorded
+    await expect(page.locator('.run-info-item').first()).toContainText('Config 2/3', {
+      timeout: 8000,
+    });
+    const firstResult = await page.evaluate(
+      () => (document.querySelector('run-host') as any)._results[0],
+    );
+    expect(firstResult.moves).toBe(1);
+    expect(firstResult.optimal).toBe(1);
+  });
+
   test('vanilla run New button is not shown', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => (location.hash = '#/run/vanilla'));
