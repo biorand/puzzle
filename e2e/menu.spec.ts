@@ -70,6 +70,17 @@ test.describe('Puzzle Select Screen', () => {
         await expect(thumbs).toHaveCount(9);
     });
 
+    test('unparsable progress value does not lock every puzzle', async ({ page }) => {
+        await page.evaluate(() => localStorage.setItem('repuzzles-progress', 'abc'));
+        await page.reload();
+        await page.evaluate(() => (location.hash = '#/quickplay'));
+        await page.waitForSelector('puzzle-select #menu-grid');
+
+        const firstCard = page.locator('.menu-card').first();
+        await expect(firstCard).not.toHaveClass(/locked/);
+        await expect(firstCard).toBeEnabled();
+    });
+
     test('first puzzle (Keypad) is unlocked on fresh start', async ({ page }) => {
         const firstCard = page.locator('.menu-card').first();
         await expect(firstCard).not.toHaveClass(/locked/);

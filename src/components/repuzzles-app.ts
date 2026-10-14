@@ -27,6 +27,11 @@ import './run-results';
 import './settings-page';
 import './status-bar';
 
+function readStoredInt(key: string): number {
+    const n = parseInt(localStorage.getItem(key) || '', 10);
+    return Number.isFinite(n) ? n : 0;
+}
+
 export class RepuzzlesApp extends LitElement {
     @state() private _page: Page = 'menu';
     @state() private _puzzleName = '';
@@ -126,7 +131,7 @@ export class RepuzzlesApp extends LitElement {
     // ── Score / Progression ──
 
     private _getScore(id: string): number {
-        return parseInt(localStorage.getItem(`repuzzles-${id}-score`) || '0', 10);
+        return readStoredInt(`repuzzles-${id}-score`);
     }
 
     private _setScore(id: string, n: number): void {
@@ -134,15 +139,17 @@ export class RepuzzlesApp extends LitElement {
     }
 
     private _getProgress(): number {
-        return parseInt(localStorage.getItem('repuzzles-progress') || '0', 10);
+        const n = readStoredInt('repuzzles-progress');
+        return Math.min(Math.max(n, 0), puzzleOrder.length - 1);
     }
 
     private _setProgress(n: number): void {
-        localStorage.setItem('repuzzles-progress', String(n));
+        const clamped = Math.min(Math.max(n, 0), puzzleOrder.length - 1);
+        localStorage.setItem('repuzzles-progress', String(clamped));
     }
 
     private _getKeypadTutorial(): number {
-        return parseInt(localStorage.getItem('repuzzles-keypad-tutorial') || '0', 10);
+        return readStoredInt('repuzzles-keypad-tutorial');
     }
 
     private _setKeypadTutorial(n: number): void {
