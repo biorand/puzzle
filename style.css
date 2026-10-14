@@ -2796,3 +2796,13 @@ puzzle-select {
 .results-btn-primary:hover {
     background: rgba(255, 102, 0, 0.2);
 }
+
+/* ── Keyboard focus ── */
+
+.vjolt-bottle:focus-visible,
+.stagla-light:focus-visible,
+.sliding-tile:focus-visible,
+.lab-cell:focus-visible {
+    outline: 2px solid #ff6600;
+    outline-offset: 2px;
+}

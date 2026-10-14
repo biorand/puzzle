@@ -78,6 +78,28 @@ describe('puzzle-lab-puzzle', () => {
         document.body.removeChild(el);
     });
 
+    it('activates a cell with the Enter key', async () => {
+        const el = document.createElement('puzzle-lab-puzzle') as PuzzleLabPuzzle;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const spy = vi.fn();
+        el.addEventListener('puzzle-status', spy);
+
+        const cells = el.querySelectorAll<HTMLElement>('.lab-cell');
+        expect(cells[0].tabIndex).toBe(0);
+        expect(cells[0].getAttribute('role')).toBe('button');
+
+        cells[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await el.updateComplete;
+
+        expect(spy).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: expect.objectContaining({ moves: 1 }) }),
+        );
+
+        document.body.removeChild(el);
+    });
+
     it('regenerate event resets puzzle', async () => {
         const el = document.createElement('puzzle-lab-puzzle') as PuzzleLabPuzzle;
         document.body.appendChild(el);

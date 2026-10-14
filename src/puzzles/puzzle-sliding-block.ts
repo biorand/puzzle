@@ -154,6 +154,13 @@ export class PuzzleSlidingBlock extends PuzzleBase {
         this._sendStatus(this._moves, this._optimal);
     }
 
+    private _onTileKeydown(e: KeyboardEvent): void {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this._onTileClick(e);
+        }
+    }
+
     private _onTileClick(e: Event): void {
         if (this._playing) return;
         const val = parseInt((e.currentTarget as HTMLElement).dataset.value!, 10);
@@ -242,7 +249,11 @@ export class PuzzleSlidingBlock extends PuzzleBase {
                                     backgroundPosition: this._bgPos(t.val),
                                 })}
                                 data-value=${t.val}
+                                role="button"
+                                tabindex="0"
+                                aria-label="Tile ${t.val}"
                                 @click=${this._onTileClick}
+                                @keydown=${this._onTileKeydown}
                             ></div>
                         `;
                     },

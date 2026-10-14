@@ -227,6 +227,13 @@ export class PuzzleVjolt extends PuzzleBase {
         this._handleBottleClick(idx);
     }
 
+    private _onBottleKeydown(e: KeyboardEvent): void {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this._onBottleClick(e);
+        }
+    }
+
     private _handleFill(baseIdx: number): void {
         if (this._won || this._playing || !this._config) return;
         const emptyIdx = this._slots.indexOf(null);
@@ -427,7 +434,15 @@ export class PuzzleVjolt extends PuzzleBase {
         const b = this._slots[i];
         const isSelected = this._selectedIdxs.includes(i);
         if (!b) {
-            return html`<div class="vjolt-bottle empty" data-idx=${i} @click=${this._onBottleClick}>
+            return html`<div
+                class="vjolt-bottle empty"
+                data-idx=${i}
+                role="button"
+                tabindex="0"
+                aria-label="Empty bottle slot ${i + 1}"
+                @click=${this._onBottleClick}
+                @keydown=${this._onBottleKeydown}
+            >
                 <div class="vjolt-bottle-fill"></div>
                 <div class="vjolt-bottle-name"></div>
                 <div class="vjolt-bottle-value"></div>
@@ -436,7 +451,15 @@ export class PuzzleVjolt extends PuzzleBase {
         let cls = `vjolt-bottle ${b.colorClass}`;
         if (isSelected) cls += ' selected';
         if (b.isPoison) cls += ' poison';
-        return html`<div class="${cls}" data-idx=${i} @click=${this._onBottleClick}>
+        return html`<div
+            class="${cls}"
+            data-idx=${i}
+            role="button"
+            tabindex="0"
+            aria-label=${b.isPoison ? 'Poison bottle' : `Bottle of ${b.name}, value ${b.value}`}
+            @click=${this._onBottleClick}
+            @keydown=${this._onBottleKeydown}
+        >
             <div class="vjolt-bottle-fill"></div>
             <div class="vjolt-bottle-name">${b.name}</div>
             <div class="vjolt-bottle-value">${b.isPoison ? '' : `#${b.value}`}</div>

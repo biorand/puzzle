@@ -104,6 +104,28 @@ describe('puzzle-stagla', () => {
         );
     });
 
+    it('activates a light with the Enter key', async () => {
+        const el = document.createElement('puzzle-stagla') as PuzzleStagla;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const statusSpy = vi.fn();
+        el.addEventListener('puzzle-status', statusSpy);
+
+        const light = el.querySelector<HTMLElement>('.stagla-light')!;
+        expect(light.tabIndex).toBe(0);
+        expect(light.getAttribute('role')).toBe('button');
+
+        light.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await el.updateComplete;
+
+        expect(statusSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                detail: expect.objectContaining({ moves: 1 }),
+            }),
+        );
+    });
+
     it('regenerate event triggers puzzle reset', async () => {
         const el = document.createElement('puzzle-stagla') as PuzzleStagla;
         document.body.appendChild(el);

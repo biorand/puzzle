@@ -86,6 +86,30 @@ describe('puzzle-sliding-block', () => {
         );
     });
 
+    it('activates a tile with the Enter key', async () => {
+        const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const board = (el as unknown as { _board: number[] })._board;
+        const blank = board.indexOf(0);
+        const bRow = Math.floor(blank / 3);
+        const bCol = blank % 3;
+        const targetPos = bRow * 3 + ((bCol + 1) % 3);
+        const val = board[targetPos];
+        const tile = el.querySelector<HTMLElement>(`.sliding-tile[data-value="${val}"]`)!;
+
+        expect(tile.tabIndex).toBe(0);
+        expect(tile.getAttribute('role')).toBe('button');
+
+        tile.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await el.updateComplete;
+
+        expect((el as unknown as { _board: number[] })._board.indexOf(0)).toBe(targetPos);
+
+        document.body.removeChild(el);
+    });
+
     it('regenerate event triggers puzzle reset', async () => {
         const el = document.createElement('puzzle-sliding-block') as PuzzleSlidingBlock;
         document.body.appendChild(el);

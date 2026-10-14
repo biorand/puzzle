@@ -80,6 +80,26 @@ describe('puzzle-vjolt', () => {
         document.body.removeChild(el);
     });
 
+    it('selects a bottle with the Enter key', async () => {
+        const el = document.createElement('puzzle-vjolt') as PuzzleVjolt;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        el.querySelectorAll<HTMLButtonElement>('.vjolt-shelf-btn')[0].click();
+        await el.updateComplete;
+
+        const bottle = el.querySelector<HTMLElement>('.vjolt-bottle[data-idx="0"]')!;
+        expect(bottle.tabIndex).toBe(0);
+        expect(bottle.getAttribute('role')).toBe('button');
+
+        bottle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await el.updateComplete;
+
+        expect(bottle.classList.contains('selected')).toBe(true);
+
+        document.body.removeChild(el);
+    });
+
     it('regenerate event resets puzzle', async () => {
         const el = document.createElement('puzzle-vjolt') as PuzzleVjolt;
         document.body.appendChild(el);

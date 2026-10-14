@@ -135,6 +135,13 @@ export class PuzzleLabPuzzle extends PuzzleBase {
         this._pressColor(colorIdx);
     }
 
+    private _onCellKeydown(e: KeyboardEvent): void {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this._onCellClick(e);
+        }
+    }
+
     private _pressColor(colorIdx: number): void {
         if (this._playing) return;
 
@@ -224,7 +231,11 @@ export class PuzzleLabPuzzle extends PuzzleBase {
                         class="${cls}"
                         data-index=${i}
                         data-coloridx=${cell.colorIndex}
+                        role="button"
+                        tabindex="0"
+                        aria-label="${colorName} cell, arrow pointing ${effectiveDir}"
                         @click=${this._onCellClick}
+                        @keydown=${this._onCellKeydown}
                     >
                         <div class="lab-arrow">${ARROW_CHARS[effectiveDir]}</div>
                         <div class="${flowCls}">

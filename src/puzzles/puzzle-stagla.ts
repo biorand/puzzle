@@ -192,6 +192,13 @@ export class PuzzleStagla extends PuzzleBase {
         this._press(idx);
     }
 
+    private _onLightKeydown(e: KeyboardEvent): void {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this._onLightClick(e);
+        }
+    }
+
     render() {
         const target = this._stageTargets[this._stage];
         return html`
@@ -211,7 +218,13 @@ export class PuzzleStagla extends PuzzleBase {
                             (i) => html`
                                 <div
                                     class="stagla-light ${this._lights[i] ? 'on' : ''}"
+                                    role="button"
+                                    tabindex="0"
+                                    aria-label="Light ${LABELS[i]}${this._lights[i]
+                                        ? ', on'
+                                        : ', off'}"
                                     @click=${this._onLightClick}
+                                    @keydown=${this._onLightKeydown}
                                     data-idx=${i}
                                 ></div>
                             `,
