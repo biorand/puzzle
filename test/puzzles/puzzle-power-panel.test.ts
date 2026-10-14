@@ -5,6 +5,7 @@ vi.mock('../../src/audio', () => ({
     playTone: vi.fn(),
     playChime: vi.fn(),
     playMelody: vi.fn().mockResolvedValue(undefined),
+    playFailTone: vi.fn(),
     initAudioOnFirstClick: vi.fn(),
 }));
 
@@ -74,6 +75,39 @@ describe('puzzle-power-panel', () => {
         expect(spy).toHaveBeenCalledWith(
             expect.objectContaining({ detail: expect.objectContaining({ moves: 0 }) }),
         );
+
+        document.body.removeChild(el);
+    });
+
+    it('reports moves to the status bar as switches are pressed', async () => {
+        const el = document.createElement('puzzle-power-panel') as PuzzlePowerPanel;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const spy = vi.fn();
+        el.addEventListener('puzzle-status', spy);
+        el.querySelector<HTMLButtonElement>('.pp-btn-up')!.click();
+
+        expect(spy).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: expect.objectContaining({ moves: 1 }) }),
+        );
+
+        document.body.removeChild(el);
+    });
+
+    it('plays the fail tone when a switch would go out of range', async () => {
+        const { playFailTone } = await import('../../src/audio');
+        const el = document.createElement('puzzle-power-panel') as PuzzlePowerPanel;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        // Force the first switch downward from 0, which is out of range
+        el._switchValues = [{ x: 10, y: 10 }];
+        el._needle = 0;
+        el.querySelector<HTMLButtonElement>('.pp-btn-down')!.click();
+        await new Promise((r) => setTimeout(r, 1200));
+
+        expect(playFailTone).toHaveBeenCalled();
 
         document.body.removeChild(el);
     });

@@ -1,7 +1,7 @@
 import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { playChime, playTone } from '../audio';
+import { playChime, playFailTone, playTone } from '../audio';
 import { sleep, defaultActions } from './shared';
 import { PuzzleBase } from './base';
 import { Rng } from '../rng';
@@ -93,30 +93,6 @@ export class PuzzlePowerPanel extends PuzzleBase {
         this._flashing = false;
     }
 
-    private _playFailTone(): void {
-        try {
-            const actx = new (
-                window.AudioContext ||
-                (window as unknown as { webkitAudioContext: typeof AudioContext })
-                    .webkitAudioContext
-            )();
-            if (actx.state === 'suspended') actx.resume();
-            const now = actx.currentTime;
-            const osc = actx.createOscillator();
-            const gain = actx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(110, now);
-            osc.frequency.linearRampToValueAtTime(80, now + 0.25);
-            gain.gain.setValueAtTime(0.12, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            osc.connect(gain).connect(actx.destination);
-            osc.start(now);
-            osc.stop(now + 0.3);
-        } catch {
-            /* audio may not be available */
-        }
-    }
-
     private async _flashAndReset(): Promise<void> {
         this._flashing = true;
         await sleep(50);
@@ -142,7 +118,7 @@ export class PuzzlePowerPanel extends PuzzleBase {
         if (next < MIN || next > MAX) {
             this._needle = next < MIN ? MIN : MAX;
             await sleep(400);
-            this._playFailTone();
+            playFailTone();
             await this._flashAndReset();
             this._sendStatus(this._switchIdx, SWITCH_COUNT);
             this._playing = false;
@@ -154,6 +130,7 @@ export class PuzzlePowerPanel extends PuzzleBase {
         this._upDown[this._switchIdx] = isUp;
         this._needle = next;
         this._switchIdx++;
+        this._sendStatus(this._switchIdx, SWITCH_COUNT);
         try {
             playTone(this._needle / MAX);
         } catch {
