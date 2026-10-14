@@ -70,10 +70,11 @@ export class RunHost extends LitElement {
     }
 
     private _onSettingsReset(): void {
-        if (confirm('Reset all progress? This will not end your run.')) {
-            localStorage.clear();
-            this._subPage = 'puzzle';
-        }
+        // The settings page already confirmed the reset; only clear game data
+        // so unrelated preferences (like sound) are controlled separately.
+        const keys = Object.keys(localStorage).filter((k) => k.startsWith('repuzzles-'));
+        for (const k of keys) localStorage.removeItem(k);
+        this._subPage = 'puzzle';
     }
 
     private _quitRun(): void {

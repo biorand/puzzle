@@ -157,6 +157,43 @@ test.describe('Run Mode', () => {
     await expect(page.locator('.run-info-item').first()).toContainText('Config 2/3');
   });
 
+  test('reset in run settings clears game data without a native confirm', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => (location.hash = '#/run/random'));
+    await page.waitForTimeout(1000);
+
+    await page.evaluate(() => {
+      localStorage.setItem('repuzzles-progress', '5');
+      localStorage.setItem('other-key', 'keep');
+    });
+
+    await page.locator('#settings-btn').click();
+    await expect(page.locator('settings-page')).toBeVisible();
+
+    let dialogSeen = false;
+    page.on('dialog', async (d) => {
+      dialogSeen = true;
+      await d.dismiss();
+    });
+
+    await page.locator('#settings-reset-btn').click(); // arm
+    await page.locator('#settings-reset-btn').click(); // confirm
+    await page.waitForTimeout(300);
+
+    expect(dialogSeen).toBe(false);
+
+    const state = await page.evaluate(() => ({
+      progress: localStorage.getItem('repuzzles-progress'),
+      other: localStorage.getItem('other-key'),
+      onRun: !!document.querySelector('run-host'),
+      onSettings: !!document.querySelector('settings-page'),
+    }));
+    expect(state.progress).toBeNull();
+    expect(state.other).toBe('keep');
+    expect(state.onRun).toBe(true);
+    expect(state.onSettings).toBe(false);
+  });
+
   test('restart keeps footer toolbar visible (does not disappear)', async ({ page }) => {
     // This tests the bug where clicking back → restart causes the bottom
     // toolbar (app-footer with action buttons) to disappear because the
