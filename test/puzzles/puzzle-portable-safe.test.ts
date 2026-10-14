@@ -93,6 +93,29 @@ describe('puzzle-portable-safe', () => {
         document.body.removeChild(el);
     });
 
+    it('win animation clears the chain highlight from every light', async () => {
+        const el = document.createElement('puzzle-portable-safe') as PuzzlePortableSafe;
+        document.body.appendChild(el);
+        await el.updateComplete;
+
+        const completeSpy = vi.fn();
+        el.addEventListener('puzzle-complete', completeSpy);
+
+        const order = ((el as any)._mapping as number[])
+            .map((light, btn) => ({ light, btn }))
+            .sort((a, b) => a.light - b.light)
+            .map((x) => x.btn);
+        const btns = el.querySelectorAll<HTMLButtonElement>('.safe-btn');
+        for (const btn of order) btns[btn].click();
+
+        await new Promise((r) => setTimeout(r, 1200));
+
+        expect(completeSpy).toHaveBeenCalled();
+        expect(el.querySelectorAll('.safe-light.chain').length).toBe(0);
+
+        document.body.removeChild(el);
+    });
+
     it('regenerate event resets puzzle', async () => {
         const el = document.createElement('puzzle-portable-safe') as PuzzlePortableSafe;
         document.body.appendChild(el);

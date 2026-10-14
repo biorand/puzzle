@@ -118,26 +118,21 @@ export class PuzzlePortableSafe extends PuzzleBase {
 
         const melodyPromise = playMelody('E4B4G4.E4B4G4.E4B4G4F4E4D4');
 
+        const lights = () => this.renderRoot.querySelectorAll<HTMLElement>('.safe-light');
+
         for (let i = 0; i < NUM_BTNS; i++) {
-            const light = this.renderRoot.querySelector<HTMLElement>(
-                `.safe-light:nth-child(${i + 1})`,
-            );
-            light?.classList.toggle('chain', i % 2 === 0);
+            lights()[i]?.classList.toggle('chain', i % 2 === 0);
         }
 
         const interval = setInterval(() => {
-            const lights = this.renderRoot.querySelectorAll<HTMLElement>('.safe-light');
-            for (const l of lights) l.classList.toggle('chain');
+            for (const l of lights()) l.classList.toggle('chain');
         }, 500);
 
         await melodyPromise;
         clearInterval(interval);
 
         for (let i = 0; i < NUM_BTNS; i++) {
-            const light = this.renderRoot.querySelector<HTMLElement>(
-                `.safe-light:nth-child(${i + 1})`,
-            );
-            light?.classList.remove('chain');
+            lights()[i]?.classList.remove('chain');
             await sleep(100);
         }
 
