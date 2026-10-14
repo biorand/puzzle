@@ -13,6 +13,20 @@ test.describe('Navigation', () => {
     await expect(backBtn).not.toBeVisible();
   });
 
+  test('settings button is hidden on pages without settings', async ({ page }) => {
+    await page.evaluate(() => (location.hash = '#/settings'));
+    await expect(page.locator('settings-page')).toBeVisible();
+    await expect(page.locator('#settings-btn')).not.toBeVisible();
+
+    await page.evaluate(() => (location.hash = '#/melody'));
+    await expect(page.locator('melody-composer')).toBeVisible();
+    await expect(page.locator('#settings-btn')).not.toBeVisible();
+
+    await page.evaluate(() => (location.hash = '#/run/results'));
+    await expect(page.locator('run-results')).toBeVisible();
+    await expect(page.locator('#settings-btn')).not.toBeVisible();
+  });
+
   test('vanilla run shows back button, clicking shows dialog with three options', async ({ page }) => {
     // Navigate to vanilla run
     await page.locator('.menu-run-btn').filter({ hasText: 'Vanilla Run' }).click();

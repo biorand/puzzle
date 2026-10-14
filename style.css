@@ -170,6 +170,11 @@ melody-composer {
     justify-content: center;
 }
 
+#settings-btn.hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 #settings-btn:hover {
     color: #ccc;
 }
