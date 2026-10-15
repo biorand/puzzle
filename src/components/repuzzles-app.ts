@@ -164,10 +164,19 @@ export class RepuzzlesApp extends LitElement {
         if (this._isUnlocked(id)) return undefined;
         const idx = puzzleOrder.indexOf(id);
         if (idx <= 0) return undefined;
-        const prevId = puzzleOrder[idx - 1];
-        const prevPuzzle = puzzles.get(prevId);
-        if (!prevPuzzle) return undefined;
-        return `🔒 Complete ${prevPuzzle.name}`;
+        const puzzle = puzzles.get(id);
+        if (!puzzle) return undefined;
+
+        // The frontier puzzle can also be reached by finishing the previous
+        // puzzle in Quick Play; any locked puzzle can be unlocked by
+        // completing it in a run.
+        if (idx === this._getProgress() + 1) {
+            const prevPuzzle = puzzles.get(puzzleOrder[idx - 1]);
+            if (prevPuzzle) {
+                return `🔒 Complete ${prevPuzzle.name} in Quick Play or ${puzzle.name} in a run`;
+            }
+        }
+        return '🔒 Complete in a run';
     }
 
     // ── Navigation ──

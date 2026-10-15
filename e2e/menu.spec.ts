@@ -101,6 +101,19 @@ test.describe('Puzzle Select Screen', () => {
         await expect(firstLocked.locator('.menu-card-req')).toContainText('Complete');
     });
 
+    test('lock labels explain both ways to unlock a puzzle', async ({ page }) => {
+        // The frontier puzzle can be unlocked via Quick Play or by completing
+        // it in a run
+        const vjoltReq = page.locator('.menu-card[data-id="vjolt"] .menu-card-req');
+        await expect(vjoltReq).toContainText('Complete Keypad in Quick Play');
+        await expect(vjoltReq).toContainText('V-JOLT in a run');
+
+        // Puzzles further down the chain can only be unlocked in a run
+        await expect(page.locator('.menu-card[data-id="labPuzzle"] .menu-card-req')).toHaveText(
+            '🔒 Complete in a run',
+        );
+    });
+
     test('clicking locked puzzle does not navigate', async ({ page }) => {
         const firstLocked = page.locator('.menu-card.locked').first();
         await firstLocked.click({ force: true });

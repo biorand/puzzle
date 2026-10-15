@@ -205,6 +205,9 @@ test.describe('Run Mode', () => {
 
     await expect(page.locator('.menu-card[data-id="vjolt"]')).not.toHaveClass(/locked/);
     await expect(page.locator('.menu-card[data-id="portableSafe"]')).toHaveClass(/locked/);
+    await expect(
+      page.locator('.menu-card[data-id="portableSafe"] .menu-card-req'),
+    ).toContainText('Complete V-JOLT in Quick Play or Portable Safe in a run');
   });
 
   test('reset is inert during completion and cannot corrupt the result', async ({ page }) => {
