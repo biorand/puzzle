@@ -15,7 +15,7 @@ test.describe('Run Mode', () => {
 
     // Info bar should show keypad name and config
     await expect(page.locator('.run-info-item').first()).toContainText('Keypad');
-    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 9');
+    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 10');
 
     // Bottom info bar shows moves
     await expect(page.locator('.run-info-bar-bottom')).toContainText('Moves: 0');
@@ -35,7 +35,7 @@ test.describe('Run Mode', () => {
 
     await expect(page.locator('.run-info-item').first()).toContainText('Keypad');
     await expect(page.locator('.run-info-item').first()).toContainText('Config 1/3');
-    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 12'); // 3+1+...+2 = 12
+    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 13'); // 3+1+...+2+1 = 13
   });
 
   test('random run New Puzzle regenerates puzzle and increments penalty', async ({ page }) => {

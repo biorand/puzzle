@@ -123,9 +123,9 @@ test.describe('Keypad Puzzle', () => {
         const unlocked = await page.evaluate(
             () => JSON.parse(localStorage.getItem('repuzzles-unlocked') || '[]') as string[],
         );
-        expect(unlocked.length).toBe(9);
+        expect(unlocked.length).toBe(10);
 
-        // All 9 cards should be enabled (no locked class)
+        // All 10 cards should be enabled (no locked class)
         await page.evaluate(() => (location.hash = '#/quickplay'));
         await page.waitForSelector('puzzle-select #menu-grid');
         await expect(page.locator('.menu-card.locked')).toHaveCount(0);
@@ -190,6 +190,6 @@ test.describe('Keypad Puzzle', () => {
         const unlocked = await page.evaluate(
             () => JSON.parse(localStorage.getItem('repuzzles-unlocked') || '[]') as string[],
         );
-        expect(unlocked.length).toBe(9);
+        expect(unlocked.length).toBe(10);
     });
 });

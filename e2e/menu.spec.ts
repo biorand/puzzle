@@ -25,7 +25,7 @@ test.describe('Main Menu', () => {
         const quickPlayBtn = page.locator('.menu-run-btn').filter({ hasText: 'Quick Play' });
         await quickPlayBtn.click();
         await expect(page.locator('puzzle-select')).toBeVisible();
-        await expect(page.locator('puzzle-select #menu-grid .menu-card')).toHaveCount(9);
+        await expect(page.locator('puzzle-select #menu-grid .menu-card')).toHaveCount(10);
     });
 
     test('melody composer button navigates to the melody page and back', async ({ page }) => {
@@ -60,14 +60,14 @@ test.describe('Puzzle Select Screen', () => {
         await page.waitForSelector('puzzle-select #menu-grid');
     });
 
-    test('renders all 9 puzzle cards in the grid', async ({ page }) => {
+    test('renders all 10 puzzle cards in the grid', async ({ page }) => {
         const cards = page.locator('.menu-card');
-        await expect(cards).toHaveCount(9);
+        await expect(cards).toHaveCount(10);
     });
 
     test('each card displays an SVG thumbnail', async ({ page }) => {
         const thumbs = page.locator('.menu-card-thumb svg');
-        await expect(thumbs).toHaveCount(9);
+        await expect(thumbs).toHaveCount(10);
     });
 
     test('corrupt unlock data is ignored and leaves puzzles locked', async ({ page }) => {
@@ -76,11 +76,11 @@ test.describe('Puzzle Select Screen', () => {
         await page.evaluate(() => (location.hash = '#/quickplay'));
         await page.waitForSelector('puzzle-select #menu-grid');
 
-        await expect(page.locator('.menu-card.locked')).toHaveCount(9);
+        await expect(page.locator('.menu-card.locked')).toHaveCount(10);
     });
 
     test('all puzzles are locked on fresh start', async ({ page }) => {
-        await expect(page.locator('.menu-card.locked')).toHaveCount(9);
+        await expect(page.locator('.menu-card.locked')).toHaveCount(10);
         const firstCard = page.locator('.menu-card').first();
         await expect(firstCard).toBeDisabled();
         await expect(firstCard.locator('.menu-card-name')).toHaveText('Keypad');
@@ -89,10 +89,10 @@ test.describe('Puzzle Select Screen', () => {
     test('locked puzzles show requirement label and are disabled', async ({ page }) => {
         const lockedCards = page.locator('.menu-card.locked');
         const lockedCount = await lockedCards.count();
-        expect(lockedCount).toBe(9);
+        expect(lockedCount).toBe(10);
 
         const requirements = page.locator('.menu-card-req');
-        await expect(requirements).toHaveCount(9);
+        await expect(requirements).toHaveCount(10);
 
         const firstLocked = lockedCards.first();
         await expect(firstLocked).toBeDisabled();

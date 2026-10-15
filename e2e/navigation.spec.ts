@@ -100,7 +100,7 @@ test.describe('Navigation', () => {
     await expect(page.locator('run-host')).toBeVisible();
     await expect(page.locator('.run-info-bar-bottom')).toContainText('Moves: 0');
     await expect(page.locator('.run-info-item').first()).toContainText('Config 1/3');
-    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 12');
+    await expect(page.locator('.run-info-item').nth(1)).toContainText('1 / 13');
   });
 
   test('random run shows back button and dialog same as vanilla', async ({ page }) => {

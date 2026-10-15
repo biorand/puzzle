@@ -330,6 +330,15 @@ export class RunHost extends LitElement {
                     @puzzle-complete=${this._onPuzzleComplete}
                     @puzzle-actions=${this._onPuzzleActions}
                 ></puzzle-plant43>`;
+            case 'labCircuit':
+                return html`<puzzle-lab-circuit
+                    .rng=${rng}
+                    .vanillaIndex=${vanillaIndex}
+                    data-run-puzzle=${config.puzzleId}
+                    @puzzle-status=${this._onPuzzleStatus}
+                    @puzzle-complete=${this._onPuzzleComplete}
+                    @puzzle-actions=${this._onPuzzleActions}
+                ></puzzle-lab-circuit>`;
             default:
                 return null;
         }

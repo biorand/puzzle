@@ -1,0 +1,1263 @@
+import { html } from 'lit';
+import { state } from 'lit/decorators.js';
+import { playChime, playMelody, playTone } from '../audio';
+import { Rng } from '../rng';
+import { PuzzleBase } from './base';
+import { defaultActions, sleep } from './shared';
+
+type Dir = 'UP' | 'RIGHT' | 'DOWN' | 'LEFT';
+type JunctionType = 'T' | 'L' | 'diag';
+
+export interface Edge {
+    idx: number;
+    from: number;
+    fromPort: Dir;
+    to: number;
+    toPort: Dir;
+}
+
+export interface CircuitState {
+    nodes: Node[];
+    edges: Edge[];
+    ringCount: number;
+    optimal: number;
+    virtualSize: number;
+    startRotations: number[];
+}
+
+export interface DrawContext {
+    hoveredRing: number;
+    rotations: number[];
+    portMap: Map<string, number[]>;
+    powered: Set<number>;
+}
+
+export interface PowerResult {
+    powered: Set<number>;
+    poweredEdges: Set<number>;
+    visitedEdges: Set<number>;
+}
+
+const PORT_ORDER: Dir[] = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+const BASE_CONN: Record<string, [number, number][]> = {
+    T: [
+        [0, 1],
+        [0, 3],
+        [1, 3],
+    ],
+    L: [[0, 1]],
+    diag: [
+        [0, 1],
+        [2, 3],
+    ],
+};
+const RING_BAND = 12;
+const RING_GAP = 14;
+const MAX_R = 4;
+const RING_COUNT_MIN = 2;
+const RING_COUNT_MAX = 4;
+const SOCKET_MIN = 2;
+const SOCKET_MAX = 6;
+const CONN_POS = [1, 3, 5, 7];
+const CORNER_POS = [0, 2, 4, 6];
+const JUNC_TYPES: JunctionType[] = ['T', 'L', 'diag'];
+const PAD_RATIO = 24 / 512;
+const NODE_RADIUS_RATIO = 1 / 512;
+const JUNC_RADIUS_RATIO = 12 / 512;
+const SOCKET_RADIUS_RATIO = 10 / 512;
+const POWER_RADIUS_RATIO = 20 / 512;
+
+// ── Pure helpers ──
+
+function dirBetween(a: { x: number; y: number }, b: { x: number; y: number }): Dir {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'RIGHT' : 'LEFT') : dy > 0 ? 'DOWN' : 'UP';
+}
+
+export function activeDirs(jType: string, rot: number): Dir[] {
+    const set = new Set<Dir>();
+    for (const [a, b] of BASE_CONN[jType]) {
+        set.add(PORT_ORDER[(a - rot + 4) % 4]);
+        set.add(PORT_ORDER[(b - rot + 4) % 4]);
+    }
+    return [...set];
+}
+
+function activePairs(jType: string, rot: number): [Dir, Dir][] {
+    return BASE_CONN[jType].map(([a, b]) => [
+        PORT_ORDER[(a - rot + 4) % 4],
+        PORT_ORDER[(b - rot + 4) % 4],
+    ]);
+}
+
+function ringPositions(ring: number): { x: number; y: number }[] {
+    const hw = (MAX_R - ring) * (RING_BAND + RING_GAP);
+    return [
+        { x: -hw, y: -hw },
+        { x: 0, y: -hw },
+        { x: hw, y: -hw },
+        { x: hw, y: 0 },
+        { x: hw, y: hw },
+        { x: 0, y: hw },
+        { x: -hw, y: hw },
+        { x: -hw, y: 0 },
+    ];
+}
+
+function diagPartnerDir(rot: number, dir: Dir): Dir | null {
+    for (const [a, b] of activePairs('diag', rot)) {
+        if (a === dir) return b;
+        if (b === dir) return a;
+    }
+    return null;
+}
+
+/** Find the port that `neighbor` uses to connect to `nodeIdx`. */
+function _neighborPort(
+    nodeIdx: number,
+    neighbor: number,
+    portMap: Map<string, number[]>,
+): Dir | null {
+    for (const dir of PORT_ORDER) {
+        const nbs = portMap.get(`${neighbor},${dir}`);
+        if (nbs && nbs.includes(nodeIdx)) return dir;
+    }
+    return null;
+}
+
+function junctionStubConducts(
+    nodeIdx: number,
+    jType: JunctionType,
+    ring: number,
+    dir: Dir,
+    powered: Set<number>,
+    rots: number[],
+    portMap: Map<string, number[]>,
+): boolean {
+    if (jType !== 'diag') {
+        return powered.has(nodeIdx) && activeDirs(jType, rots[ring]).includes(dir);
+    }
+    const partner = diagPartnerDir(rots[ring], dir);
+    const onDir = portMap.get(`${nodeIdx},${dir}`) || [];
+    if (onDir.some((nb) => powered.has(nb))) return true;
+    if (partner) {
+        const onPartner = portMap.get(`${nodeIdx},${partner}`) || [];
+        if (onPartner.some((nb) => powered.has(nb))) return true;
+    }
+    return false;
+}
+
+// ── Node class hierarchy ──
+
+export class Node {
+    protected _portPadding = 0;
+
+    constructor(
+        public idx: number,
+        public x: number,
+        public y: number,
+        public radius: number,
+    ) {}
+
+    portCoord(dir: Dir, padding?: number): { x: number; y: number } {
+        const r = this.radius + (padding ?? this._portPadding);
+        switch (dir) {
+            case 'UP':
+                return { x: this.x, y: this.y - r };
+            case 'DOWN':
+                return { x: this.x, y: this.y + r };
+            case 'LEFT':
+                return { x: this.x - r, y: this.y };
+            case 'RIGHT':
+                return { x: this.x + r, y: this.y };
+        }
+    }
+
+    conductsPower(
+        _dir: Dir,
+        powered: Set<number>,
+        _rots: number[],
+        _portMap: Map<string, number[]>,
+    ): boolean {
+        return powered.has(this.idx);
+    }
+
+    draw(ctx: CanvasRenderingContext2D, dctx: DrawContext): void {
+        const isP = dctx.powered.has(this.idx);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = isP ? '#14812d' : '#333';
+        ctx.fill();
+    }
+}
+
+export class Junction extends Node {
+    constructor(
+        idx: number,
+        x: number,
+        y: number,
+        radius: number,
+        public ring: number,
+        public jType: JunctionType,
+    ) {
+        super(idx, x, y, radius);
+        this._portPadding = 4;
+    }
+
+    conductsPower(
+        dir: Dir,
+        powered: Set<number>,
+        rots: number[],
+        portMap: Map<string, number[]>,
+    ): boolean {
+        return junctionStubConducts(this.idx, this.jType, this.ring, dir, powered, rots, portMap);
+    }
+
+    draw(ctx: CanvasRenderingContext2D, dctx: DrawContext): void {
+        const isP = dctx.powered.has(this.idx);
+        const isHovered = dctx.hoveredRing === this.ring;
+        ctx.fillStyle = isP ? '#1a3a2a' : '#1a1a1a';
+        ctx.strokeStyle = isHovered ? '#48b46c' : isP ? '#14812d' : '#333';
+        ctx.lineWidth = isP ? 2 : 1;
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = '#48b46c';
+        ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        ctx.strokeRect(
+            this.x - this.radius,
+            this.y - this.radius,
+            this.radius * 2,
+            this.radius * 2,
+        );
+        ctx.shadowBlur = 0;
+
+        if (this.jType === 'diag') {
+            const pairs = activePairs(this.jType, dctx.rotations[this.ring]);
+            for (const [dirA, dirB] of pairs) {
+                const pa = this.portCoord(dirA, -2);
+                const pb = this.portCoord(dirB, -2);
+                const pairPowered = this.conductsPower(
+                    dirA,
+                    dctx.powered,
+                    dctx.rotations,
+                    dctx.portMap,
+                );
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.strokeStyle = pairPowered ? '#14812d' : '#0f3d1e';
+                ctx.lineWidth = 1.5;
+                if (pairPowered) ctx.shadowColor = '#14812d';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        } else {
+            const dirs = activeDirs(this.jType, dctx.rotations[this.ring]);
+            for (const dir of dirs) {
+                const stubP = this.conductsPower(dir, dctx.powered, dctx.rotations, dctx.portMap);
+                const pt = this.portCoord(dir, 0);
+                const dx = pt.x - this.x;
+                const dy = pt.y - this.y;
+                const mag = Math.abs(dx) + Math.abs(dy);
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(
+                    this.x + (dx / mag) * this.radius * 0.75,
+                    this.y + (dy / mag) * this.radius * 0.75,
+                );
+                ctx.strokeStyle = stubP ? '#14812d' : '#0f3d1e';
+                ctx.lineWidth = 1.5;
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = '#66ff99';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+    }
+}
+
+export class Socket extends Node {
+    constructor(idx: number, x: number, y: number, radius: number) {
+        super(idx, x, y, radius);
+        this._portPadding = 4;
+    }
+
+    draw(ctx: CanvasRenderingContext2D, dctx: DrawContext): void {
+        const isP = dctx.powered.has(this.idx);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = isP ? '#14812d' : '#555';
+        ctx.lineWidth = isP ? 2.5 : 1.5;
+        ctx.shadowBlur = isP ? 10 : 0;
+        ctx.shadowColor = '#14812d';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#14812d';
+        ctx.font = `${Math.round(this.radius * 1)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = isP ? 6 : 0;
+        ctx.shadowColor = '#14812d';
+        ctx.fillText('\u26a1', this.x, this.y + 1);
+        ctx.shadowBlur = 0;
+    }
+}
+
+export class PowerSource extends Node {
+    constructor(idx: number, x: number, y: number, radius: number) {
+        super(idx, x, y, radius);
+    }
+
+    draw(ctx: CanvasRenderingContext2D, dctx: DrawContext): void {
+        const isP = dctx.powered.has(this.idx);
+        const x = this.x - this.radius;
+        const y = this.y - this.radius * 0.5;
+        const w = this.radius * 2;
+        const h = this.radius;
+        ctx.fillStyle = isP ? CO : '#161616';
+        ctx.strokeStyle = isP ? CO : '#333';
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 0;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = isP ? '#000' : '#555';
+        ctx.font = `bold ${Math.round(this.radius * 0.9)}px "Noto Sans Symbols", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('\u26a1', this.x, this.y + 1);
+    }
+}
+
+// ── Core simulation ──
+
+function buildAdjacency(state: CircuitState): Map<number, Set<number>> {
+    const adj = new Map<number, Set<number>>();
+    for (let i = 0; i < state.nodes.length; i++) adj.set(i, new Set());
+    for (const e of state.edges) {
+        adj.get(e.from)!.add(e.to);
+        adj.get(e.to)!.add(e.from);
+    }
+    return adj;
+}
+
+function buildEdgeMap(edges: Edge[]): Map<string, Edge> {
+    const m = new Map<string, Edge>();
+    for (const e of edges) {
+        m.set(`${e.from},${e.to}`, e);
+        m.set(`${e.to},${e.from}`, e);
+    }
+    return m;
+}
+
+function buildPortMap(edges: Edge[]): Map<string, number[]> {
+    const portMap = new Map<string, number[]>();
+    for (const e of edges) {
+        const ka = `${e.from},${e.fromPort}`;
+        if (!portMap.has(ka)) portMap.set(ka, []);
+        portMap.get(ka)!.push(e.to);
+        const kb = `${e.to},${e.toPort}`;
+        if (!portMap.has(kb)) portMap.set(kb, []);
+        portMap.get(kb)!.push(e.from);
+    }
+    return portMap;
+}
+
+/** Check whether a node's port is active (not blocked by rotation). */
+function _portActive(node: Node, port: Dir, rots: number[]): boolean {
+    if (!(node instanceof Junction)) return true;
+    return activeDirs(node.jType, rots[node.ring]).includes(port);
+}
+
+function applyJunctionRewiring(
+    state: CircuitState,
+    rots: number[],
+    adj: Map<number, Set<number>>,
+    portMap: Map<string, number[]>,
+    edgeMap: Map<string, Edge>,
+): void {
+    for (let i = 0; i < state.nodes.length; i++) {
+        const n = state.nodes[i];
+        if (!(n instanceof Junction)) continue;
+        if (n.jType === 'diag') {
+            const pairs = activePairs(n.jType, rots[n.ring]);
+            for (const [dirA, dirB] of pairs) {
+                const neighborsA = portMap.get(`${i},${dirA}`) || [];
+                const neighborsB = portMap.get(`${i},${dirB}`) || [];
+                // Only bridge neighbors whose connecting port on their side is active.
+                // Otherwise power could "leak" through a neighboring junction's
+                // inactive port (e.g. an L piece whose DOWN port faces a diag).
+                const activeA = neighborsA.filter((na) => {
+                    const e = edgeMap.get(`${i},${na}`);
+                    if (!e) return false;
+                    const nbPort: Dir = e.from === i ? e.toPort : e.fromPort;
+                    return _portActive(state.nodes[na], nbPort, rots);
+                });
+                const activeB = neighborsB.filter((nb) => {
+                    const e = edgeMap.get(`${i},${nb}`);
+                    if (!e) return false;
+                    const nbPort: Dir = e.from === i ? e.toPort : e.fromPort;
+                    return _portActive(state.nodes[nb], nbPort, rots);
+                });
+                for (const na of activeA) {
+                    for (const nb of activeB) {
+                        if (na === nb) continue;
+                        adj.get(na)!.add(nb);
+                        adj.get(nb)!.add(na);
+                    }
+                }
+            }
+            const ns = [...(adj.get(i) || [])];
+            const portNeighbors = new Set<number>();
+            for (const dir of PORT_ORDER) {
+                for (const nb of portMap.get(`${i},${dir}`) || []) {
+                    portNeighbors.add(nb);
+                }
+            }
+            for (const j of ns) {
+                adj.get(i)!.delete(j);
+                if (portNeighbors.has(j)) {
+                    adj.get(j)!.delete(i);
+                }
+            }
+        } else {
+            const active = activeDirs(n.jType, rots[n.ring]);
+            const neighbors = [...(adj.get(i) || [])];
+            for (const j of neighbors) {
+                const e = edgeMap.get(`${i},${j}`);
+                if (!e) continue;
+                const port = e.from === i ? e.fromPort : e.toPort;
+                if (!active.includes(port)) {
+                    adj.get(i)!.delete(j);
+                    adj.get(j)!.delete(i);
+                }
+            }
+        }
+    }
+}
+
+function bfsPowered(sourceIdx: number, adj: Map<number, Set<number>>): Set<number> {
+    const powered = new Set<number>();
+    if (sourceIdx < 0) return powered;
+    const queue = [sourceIdx];
+    powered.add(sourceIdx);
+    while (queue.length) {
+        const cur = queue.shift()!;
+        for (const nb of adj.get(cur) || []) {
+            if (!powered.has(nb)) {
+                powered.add(nb);
+                queue.push(nb);
+            }
+        }
+    }
+    return powered;
+}
+
+function deriveEdges(
+    state: CircuitState,
+    powered: Set<number>,
+    rots: number[],
+    portMap: Map<string, number[]>,
+): { poweredEdges: Set<number>; visitedEdges: Set<number> } {
+    const poweredEdges = new Set<number>();
+    const visitedEdges = new Set<number>();
+    for (let ei = 0; ei < state.edges.length; ei++) {
+        const e = state.edges[ei];
+        const a = state.nodes[e.from].conductsPower(e.fromPort, powered, rots, portMap);
+        const b = state.nodes[e.to].conductsPower(e.toPort, powered, rots, portMap);
+        if (a && b) poweredEdges.add(ei);
+        if (a || b) {
+            // An edge is "visited" (energized) if at least one endpoint can
+            // deliver power through this connection. However, a diag junction
+            // may report conduction because it "sees" a powered neighbor on
+            // a paired port — but that neighbor's connecting port might be
+            // inactive (e.g. an L piece facing the diag with an inactive port).
+            // We cross-check: if a diag is the only conducting side, verify
+            // the power actually flows through an active port on the neighbor.
+            let edgeHasPower = false;
+            for (const [ni, port] of [
+                [e.from, e.fromPort] as [number, Dir],
+                [e.to, e.toPort] as [number, Dir],
+            ]) {
+                const n = state.nodes[ni];
+                if (n instanceof Junction && n.jType === 'diag') {
+                    // Diag: check that at least one neighbor on this port
+                    // or its partner is powered through an active port.
+                    const partner = diagPartnerDir(rots[n.ring], port);
+                    for (const checkPort of partner
+                        ? ([port, partner] as Dir[])
+                        : ([port] as Dir[])) {
+                        for (const nb of portMap.get(`${ni},${checkPort}`) || []) {
+                            if (!powered.has(nb)) continue;
+                            const nbPort = _neighborPort(ni, nb, portMap);
+                            if (nbPort && !_portActive(state.nodes[nb], nbPort, rots)) continue;
+                            edgeHasPower = true;
+                            break;
+                        }
+                        if (edgeHasPower) break;
+                    }
+                } else if (n.conductsPower(port, powered, rots, portMap)) {
+                    edgeHasPower = true;
+                }
+                if (edgeHasPower) break;
+            }
+            if (edgeHasPower) visitedEdges.add(ei);
+        }
+    }
+    return { poweredEdges, visitedEdges };
+}
+
+export function calculatePowerResult(state: CircuitState, rots: number[]): PowerResult {
+    const adj = buildAdjacency(state);
+    const portMap = buildPortMap(state.edges);
+    const edgeMap = buildEdgeMap(state.edges);
+
+    applyJunctionRewiring(state, rots, adj, portMap, edgeMap);
+
+    const sourceIdx = state.nodes.findIndex((n) => n instanceof PowerSource);
+    const powered = bfsPowered(sourceIdx, adj);
+
+    const { poweredEdges, visitedEdges } = deriveEdges(state, powered, rots, portMap);
+    return { powered, poweredEdges, visitedEdges };
+}
+
+export function calculatePower(state: CircuitState, rots: number[]): Set<number> {
+    return calculatePowerResult(state, rots).powered;
+}
+
+function solveOptimal(state: CircuitState, startRots: number[] = []): number[] | null {
+    const R = state.ringCount;
+    const total = 1 << (2 * R);
+    let best: number[] | null = null;
+    let bestT = Infinity;
+    for (let i = 0; i < total; i++) {
+        const rots: number[] = [];
+        let tmp = i;
+        let clicks = 0;
+        for (let r = 0; r < R; r++) {
+            rots.push(tmp & 3);
+            clicks += tmp & 3;
+            tmp >>= 2;
+        }
+        if (clicks >= bestT) continue;
+        const effective =
+            startRots.length > 0 ? rots.map((rot, ri) => (rot + startRots[ri]) % 4) : rots;
+        const p = calculatePower(state, effective);
+        let ok = true;
+        for (let ni = 0; ni < state.nodes.length; ni++) {
+            if (state.nodes[ni] instanceof Socket && !p.has(ni)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) {
+            bestT = clicks;
+            best = rots;
+        }
+    }
+    return best;
+}
+
+export function isSolved(state: CircuitState, powered: Set<number>): boolean {
+    for (let i = 0; i < state.nodes.length; i++) {
+        if (state.nodes[i] instanceof Socket && !powered.has(i)) return false;
+    }
+    return true;
+}
+
+export function isEdgePowered(
+    edge: Edge,
+    state: CircuitState,
+    powered: Set<number>,
+    rots: number[],
+): boolean {
+    const portMap = buildPortMap(state.edges);
+    return (
+        state.nodes[edge.from].conductsPower(edge.fromPort, powered, rots, portMap) &&
+        state.nodes[edge.to].conductsPower(edge.toPort, powered, rots, portMap)
+    );
+}
+
+export function isJunctionStubPowered(
+    state: CircuitState,
+    nodeIdx: number,
+    dir: Dir,
+    powered: Set<number>,
+    rots: number[],
+): boolean {
+    const node = state.nodes[nodeIdx];
+    if (!(node instanceof Junction)) return false;
+    return junctionStubConducts(
+        nodeIdx,
+        node.jType,
+        node.ring,
+        dir,
+        powered,
+        rots,
+        buildPortMap(state.edges),
+    );
+}
+
+// ── Puzzle generation ──
+
+export class PuzzleGenerator {
+    private rc = 0;
+    private nodes: Node[] = [];
+    private edges: Edge[] = [];
+    private idxMap = new Map<string, number>();
+    private rng: Rng = new Rng();
+
+    generate(virtualSize: number, rng: Rng = new Rng()): CircuitState | null {
+        this.rng = rng;
+        const pad = Math.round(virtualSize * PAD_RATIO);
+
+        for (let att = 0; att < 200; att++) {
+            this.rc =
+                (RING_COUNT_MIN + this.rng.next() * (RING_COUNT_MAX - RING_COUNT_MIN + 1)) | 0;
+            this.nodes = [];
+            this.edges = [];
+            this.idxMap.clear();
+
+            this._createRings();
+            const centerIdx = this._createCenter();
+            const [sourceIdx, cornerNodeIdx] = this._createPowerNodes();
+            this._wireRingSegments();
+            this._wireInterRing();
+            this._wireCenter(centerIdx);
+            this._wirePower(sourceIdx, cornerNodeIdx);
+            this._promoteSockets(centerIdx);
+            this._removeOrphans();
+            if (!this._validateJunctions()) continue;
+            this._scaleCoords(virtualSize, pad);
+
+            for (const n of this.nodes) {
+                if (n instanceof Junction) n.radius = Math.round(JUNC_RADIUS_RATIO * virtualSize);
+                else if (n instanceof Socket)
+                    n.radius = Math.round(SOCKET_RADIUS_RATIO * virtualSize);
+                else if (n instanceof PowerSource)
+                    n.radius = Math.round(POWER_RADIUS_RATIO * virtualSize);
+                else n.radius = Math.round(NODE_RADIUS_RATIO * virtualSize);
+            }
+
+            const state: CircuitState = {
+                nodes: this.nodes,
+                edges: this.edges,
+                ringCount: this.rc,
+                optimal: 0,
+                virtualSize,
+                startRotations: [],
+            };
+            const baseOpt = solveOptimal(state);
+            if (!baseOpt || baseOpt.reduce((a, b) => a + b, 0) <= 0) continue;
+            const startRots = Array.from({ length: this.rc }, () => (this.rng.next() * 4) | 0);
+            if (isSolved(state, calculatePower(state, startRots))) continue;
+            const opt = solveOptimal(state, startRots);
+            if (!opt || opt.reduce((a, b) => a + b, 0) <= 0) continue;
+            state.optimal = opt.reduce((a, b) => a + b, 0);
+            state.startRotations = startRots;
+            return state;
+        }
+        return null;
+    }
+
+    private _createRings(): void {
+        for (let r = 0; r < this.rc; r++) {
+            const pos = ringPositions(r);
+            for (const cp of CORNER_POS) {
+                const i = this.nodes.length;
+                this.nodes.push(new Node(i, pos[cp].x, pos[cp].y, 0));
+                this.idxMap.set(`${r},${cp}`, i);
+            }
+            for (let ci = 0; ci < 4; ci++) {
+                const cpos = CONN_POS[ci];
+                const jType = JUNC_TYPES[(this.rng.next() * 3) | 0];
+                const i = this.nodes.length;
+                this.nodes.push(new Junction(i, pos[cpos].x, pos[cpos].y, 0, r, jType));
+                this.idxMap.set(`${r},${cpos}`, i);
+            }
+        }
+    }
+
+    private _createCenter(): number {
+        const i = this.nodes.length;
+        this.nodes.push(new Socket(i, 0, 0, 0));
+        return i;
+    }
+
+    private _createPowerNodes(): [number, number] {
+        const r0p0 = ringPositions(0)[0];
+        const r0p1 = ringPositions(0)[1];
+        const cornerNodeIdx = this.nodes.length;
+        const sourceIdx = this.nodes.length + 1;
+        this.nodes.push(
+            new Node(cornerNodeIdx, r0p1.x, r0p0.y - 16, 0),
+            new PowerSource(sourceIdx, r0p0.x, r0p0.y - 16, 0),
+        );
+        return [sourceIdx, cornerNodeIdx];
+    }
+
+    private _wireRingSegments(): void {
+        for (let r = 0; r < this.rc; r++) {
+            for (const cp of CORNER_POS) {
+                if (this.rng.next() < 0.35) continue;
+                for (const p of [cp, (cp - 1 + 8) % 8]) {
+                    const np = (p + 1) % 8;
+                    const aIdx = this.idxMap.get(`${r},${p}`)!;
+                    const bIdx = this.idxMap.get(`${r},${np}`)!;
+                    const idx = this.edges.length;
+                    this.edges.push({
+                        idx,
+                        from: aIdx,
+                        fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
+                        to: bIdx,
+                        toPort: dirBetween(this.nodes[bIdx], this.nodes[aIdx]),
+                    });
+                }
+            }
+        }
+    }
+
+    private _wireInterRing(): void {
+        for (let r = 0; r < this.rc - 1; r++) {
+            for (const cpos of CONN_POS) {
+                const aIdx = this.idxMap.get(`${r},${cpos}`)!;
+                const bIdx = this.idxMap.get(`${r + 1},${cpos}`)!;
+                const idx = this.edges.length;
+                this.edges.push({
+                    idx,
+                    from: aIdx,
+                    fromPort: dirBetween(this.nodes[aIdx], this.nodes[bIdx]),
+                    to: bIdx,
+                    toPort: dirBetween(this.nodes[bIdx], this.nodes[aIdx]),
+                });
+            }
+        }
+    }
+
+    private _wireCenter(centerIdx: number): void {
+        const shuffledConn = this.rng.shuffle([...CONN_POS]);
+        const centerConnCount = 2 + ((this.rng.next() * 3) | 0);
+        const centerConns = shuffledConn.slice(0, centerConnCount);
+        for (const cpos of centerConns) {
+            const jIdx = this.idxMap.get(`${this.rc - 1},${cpos}`)!;
+            const idx = this.edges.length;
+            this.edges.push({
+                idx,
+                from: jIdx,
+                fromPort: dirBetween(this.nodes[jIdx], this.nodes[centerIdx]),
+                to: centerIdx,
+                toPort: dirBetween(this.nodes[centerIdx], this.nodes[jIdx]),
+            });
+        }
+    }
+
+    private _wirePower(sourceIdx: number, cornerNodeIdx: number): void {
+        const r0p1 = this.idxMap.get('0,1')!;
+        const idx0 = this.edges.length;
+        const idx1 = idx0 + 1;
+        this.edges.push(
+            {
+                idx: idx0,
+                from: sourceIdx,
+                fromPort: dirBetween(this.nodes[sourceIdx], this.nodes[cornerNodeIdx]),
+                to: cornerNodeIdx,
+                toPort: dirBetween(this.nodes[cornerNodeIdx], this.nodes[sourceIdx]),
+            },
+            {
+                idx: idx1,
+                from: cornerNodeIdx,
+                fromPort: dirBetween(this.nodes[cornerNodeIdx], this.nodes[r0p1]),
+                to: r0p1,
+                toPort: dirBetween(this.nodes[r0p1], this.nodes[cornerNodeIdx]),
+            },
+        );
+    }
+
+    private _promoteSockets(centerIdx: number): void {
+        const cornerIdxs = CORNER_POS.flatMap((cp) =>
+            Array.from({ length: this.rc }, (_, r) => this.idxMap.get(`${r},${cp}`)!),
+        );
+        const target = (SOCKET_MIN + this.rng.next() * (SOCKET_MAX - SOCKET_MIN + 1)) | 0;
+        const selected = new Set(
+            this.rng.shuffle(cornerIdxs).slice(0, Math.min(target, cornerIdxs.length)),
+        );
+        selected.add(centerIdx);
+        for (const i of selected) {
+            const n = this.nodes[i]!;
+            this.nodes[i] = new Socket(i, n.x, n.y, 0);
+        }
+    }
+
+    private _removeOrphans(): void {
+        const deg = new Array(this.nodes.length).fill(0);
+        for (const e of this.edges) {
+            deg[e.from]++;
+            deg[e.to]++;
+        }
+        const orphans = new Set<number>();
+        for (let i = 0; i < deg.length; i++) if (!deg[i]) orphans.add(i);
+        if (!orphans.size) return;
+
+        const remap: number[] = [];
+        const live: Node[] = [];
+        for (let i = 0; i < this.nodes.length; i++) {
+            if (orphans.has(i)) {
+                remap[i] = -1;
+            } else {
+                const ni = live.length;
+                remap[i] = ni;
+                this.nodes[i].idx = ni;
+                live.push(this.nodes[i]);
+            }
+        }
+        this.nodes = live;
+
+        for (const e of this.edges) {
+            e.from = remap[e.from];
+            e.to = remap[e.to];
+        }
+
+        for (const [k, v] of this.idxMap) {
+            if (v < 0 || v >= remap.length || orphans.has(v)) {
+                this.idxMap.delete(k);
+            } else {
+                this.idxMap.set(k, remap[v]);
+            }
+        }
+    }
+
+    private _validateJunctions(): boolean {
+        for (const n of this.nodes) {
+            if (!(n instanceof Junction)) continue;
+            const ports: Dir[] = [];
+            for (const e of this.edges) {
+                if (e.from === n.idx) ports.push(e.fromPort);
+                if (e.to === n.idx) ports.push(e.toPort);
+            }
+            if (ports.length < 2) return false;
+            if (ports.length === 2 && n.jType !== 'T') {
+                const i1 = PORT_ORDER.indexOf(ports[0]);
+                const i2 = PORT_ORDER.indexOf(ports[1]);
+                if (Math.abs(i1 - i2) === 2) return false;
+            }
+        }
+        return true;
+    }
+
+    private _scaleCoords(virtualSize: number, pad: number): void {
+        let minX = Infinity,
+            minY = Infinity,
+            maxX = -Infinity,
+            maxY = -Infinity;
+        for (const n of this.nodes) {
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
+        }
+        const modelW = maxX - minX || 1;
+        const modelH = maxY - minY || 1;
+        const modelMax = Math.max(modelW, modelH);
+        const available = virtualSize - 2 * pad;
+        const s = available / modelMax;
+        const cw = modelW * s;
+        const ch = modelH * s;
+        const ox = (virtualSize - cw) / 2 - minX * s;
+        const oy = (virtualSize - ch) / 2 - minY * s;
+        for (const n of this.nodes) {
+            n.x = n.x * s + ox;
+            n.y = n.y * s + oy;
+        }
+    }
+}
+
+function hashPuzzle(s: CircuitState): string {
+    return JSON.stringify({
+        nodes: s.nodes.map((n) => {
+            const base = { x: Math.round(n.x), y: Math.round(n.y) };
+            if (n instanceof Junction) return { ...base, t: 'j', ring: n.ring, jt: n.jType };
+            if (n instanceof Socket) return { ...base, t: 's' };
+            if (n instanceof PowerSource) return { ...base, t: 'p' };
+            return { ...base, t: 'n' };
+        }),
+        edges: s.edges.map((e) => ({ f: e.from, fp: e.fromPort, t: e.to, tp: e.toPort })),
+        rc: s.ringCount,
+    });
+}
+
+// ── Render colors ──
+
+const CO = '#14812d';
+const CD = '#0f3d1e';
+const LABEL = '#3aa657';
+
+// ── Seven-segment digits (straight, right-angle strokes) ──
+
+const DIGIT_SEGMENTS: Record<string, string> = {
+    '0': 'abcdef',
+    '1': 'bc',
+    '2': 'abdeg',
+    '3': 'abcdg',
+    '4': 'bcfg',
+    '5': 'acdfg',
+    '6': 'acdefg',
+    '7': 'abc',
+    '8': 'abcdefg',
+    '9': 'abcdfg',
+};
+
+function drawSegmentDigit(
+    ctx: CanvasRenderingContext2D,
+    ch: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    lw: number,
+): void {
+    const segs = DIGIT_SEGMENTS[ch];
+    if (!segs) return;
+    const midY = y + h / 2;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+    ctx.beginPath();
+    const seg = (x1: number, y1: number, x2: number, y2: number): void => {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    };
+    if (segs.includes('a')) seg(x, y, x + w, y);
+    if (segs.includes('b')) seg(x + w, y, x + w, midY);
+    if (segs.includes('c')) seg(x + w, midY, x + w, y + h);
+    if (segs.includes('d')) seg(x, y + h, x + w, y + h);
+    if (segs.includes('e')) seg(x, midY, x, y + h);
+    if (segs.includes('f')) seg(x, y, x, midY);
+    if (segs.includes('g')) seg(x, midY, x + w, midY);
+    ctx.stroke();
+}
+
+function drawSegmentNumber(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    digitW: number,
+    digitH: number,
+    gap: number,
+    lw: number,
+): void {
+    for (let i = 0; i < text.length; i++) {
+        drawSegmentDigit(ctx, text[i], x + i * (digitW + gap), y, digitW, digitH, lw);
+    }
+}
+
+// ── Lit Element ──
+
+export class PuzzleLabCircuit extends PuzzleBase {
+    private static _lastHash = '';
+
+    @state() private _moves = 0;
+    @state() private _optimal = 0;
+    @state() private _rotations: number[] = [];
+    @state() private _powered: Set<number> = new Set();
+    @state() private _visitedEdges: Set<number> = new Set();
+
+    private _circuitState: CircuitState | null = null;
+    private _canvas!: HTMLCanvasElement;
+    private _ctx: CanvasRenderingContext2D | null = null;
+    private _completionAnimating = false;
+    private _hoveredRing = -1;
+
+    _newPuzzle(): void {
+        const generator = new PuzzleGenerator();
+        const rng = this._getRng();
+        // Only dedupe against the previous puzzle for unseeded (quick play)
+        // generation. Seeded runs must be reproducible regardless of session
+        // history.
+        const dedupe = this.rng === undefined;
+        let state: CircuitState | null = null;
+        do {
+            state = generator.generate(512, rng);
+            if (!state) break;
+        } while (dedupe && hashPuzzle(state) === PuzzleLabCircuit._lastHash);
+        if (!state) return;
+        PuzzleLabCircuit._lastHash = hashPuzzle(state);
+        this._circuitState = state;
+        this._rotations = [...state.startRotations];
+        this._moves = 0;
+        this._optimal = state.optimal;
+        this._playing = false;
+        this._completionAnimating = false;
+        this._simulateAndRender();
+        this._sendStatus(this._moves, this._optimal);
+    }
+
+    private _resetPuzzle(): void {
+        if (!this._circuitState) return;
+        this._rotations = [...this._circuitState.startRotations];
+        this._moves = 0;
+        this._playing = false;
+        this._completionAnimating = false;
+        this._simulateAndRender();
+        this._sendStatus(this._moves, this._optimal);
+    }
+
+    _calculatePower(state: CircuitState, rots: number[]): Set<number> {
+        return calculatePower(state, rots);
+    }
+
+    /** Indices of all socket nodes in the current puzzle (used by tests). */
+    _socketIndices(): number[] {
+        if (!this._circuitState) return [];
+        const out: number[] = [];
+        this._circuitState.nodes.forEach((n, i) => {
+            if (n instanceof Socket) out.push(i);
+        });
+        return out;
+    }
+
+    protected _syncActions(): void {
+        this._sendActions(
+            defaultActions(
+                this._playing,
+                () => this._newPuzzle(),
+                () => this._resetPuzzle(),
+            ),
+        );
+    }
+
+    private _simulateAndRender(): void {
+        if (!this._circuitState) return;
+        const result = calculatePowerResult(this._circuitState, this._rotations);
+        this._powered = result.powered;
+        this._visitedEdges = result.visitedEdges;
+        this.requestUpdate();
+    }
+
+    private _drawEdges(ctx: CanvasRenderingContext2D): void {
+        for (const e of this._circuitState!.edges) {
+            const nA = this._circuitState!.nodes[e.from];
+            const nB = this._circuitState!.nodes[e.to];
+            if (!nA || !nB) continue;
+            const p1 = nA.portCoord(e.fromPort);
+            const p2 = nB.portCoord(e.toPort);
+            const isP = this._visitedEdges.has(e.idx);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = isP ? CO : CD;
+            ctx.lineWidth = 1.5;
+            if (isP) {
+                ctx.shadowColor = CO;
+                ctx.shadowBlur = 2;
+            } else {
+                ctx.setLineDash([4, 4]);
+                ctx.shadowBlur = 0;
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    private _drawStatusOverlay(ctx: CanvasRenderingContext2D, size: number): void {
+        const sockets = this._circuitState!.nodes.filter((n) => n instanceof Socket);
+        const total = sockets.length;
+        let count = 0;
+        for (const s of sockets) if (this._powered.has(s.idx)) count++;
+        const pad = Math.round(size * PAD_RATIO);
+        ctx.fillStyle = CO;
+        ctx.font = `${Math.round(size * 0.027)}px "Noto Sans Symbols"`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = CO;
+        ctx.fillText(`\u26a1 ${count}/${total}`, size - pad, pad);
+        ctx.shadowBlur = 0;
+    }
+
+    private _drawCanvas(): void {
+        const c = this._canvas;
+        if (!c || !this._ctx || !this._circuitState) return;
+        const ctx = this._ctx;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = c.getBoundingClientRect();
+        const size = Math.min(rect.width, rect.height);
+        c.width = size * dpr;
+        c.height = size * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        ctx.fillStyle = '#0d0d0d';
+        ctx.fillRect(0, 0, size, size);
+
+        const vs = this._circuitState.virtualSize;
+        const scale = size / vs;
+        ctx.save();
+        ctx.scale(scale, scale);
+
+        this._drawEdges(ctx);
+
+        const portMap = buildPortMap(this._circuitState.edges);
+        const dctx: DrawContext = {
+            hoveredRing: this._hoveredRing,
+            rotations: this._rotations,
+            portMap,
+            powered: this._powered,
+        };
+        for (const n of this._circuitState.nodes) {
+            n.draw(ctx, dctx);
+        }
+
+        // Junction ring labels: small seven-segment digits anchored diagonally
+        // up-left of each junction box's top-left corner. Every junction on a
+        // ring shows that ring's number (outermost ring = 1).
+        const jRadius = this._circuitState.nodes.find((n) => n instanceof Junction)?.radius ?? 12;
+        const digitH = jRadius * 0.5;
+        const digitW = digitH * 0.55;
+        const digitGap = digitH * 0.25;
+        const labelGap = digitH * 0.4;
+        const labelLw = Math.max(0.8, digitH * 0.18);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = LABEL;
+        for (const n of this._circuitState.nodes) {
+            if (!(n instanceof Junction)) continue;
+            const text = String(n.ring + 1);
+            const width = text.length * digitW + (text.length - 1) * digitGap;
+            drawSegmentNumber(
+                ctx,
+                text,
+                n.x - n.radius - labelGap - width,
+                n.y - n.radius - labelGap - digitH,
+                digitW,
+                digitH,
+                digitGap,
+                labelLw,
+            );
+        }
+
+        ctx.restore();
+
+        this._drawStatusOverlay(ctx, size);
+    }
+
+    private _onCanvasMove(e: MouseEvent): void {
+        if (!this._circuitState || !this._canvas) return;
+        const rect = this._canvas.getBoundingClientRect();
+        const size = Math.min(rect.width, rect.height);
+        const vs = this._circuitState.virtualSize;
+        const scale = size / vs;
+        const x = (e.clientX - rect.left) / scale;
+        const y = (e.clientY - rect.top) / scale;
+        let foundRing = -1;
+        for (const n of this._circuitState.nodes) {
+            if (!(n instanceof Junction)) continue;
+            if ((x - n.x) ** 2 + (y - n.y) ** 2 <= (n.radius * 2) ** 2) {
+                foundRing = n.ring;
+                break;
+            }
+        }
+        if (foundRing !== this._hoveredRing) {
+            this._hoveredRing = foundRing;
+            this._canvas.style.cursor = foundRing >= 0 ? 'pointer' : '';
+            this._drawCanvas();
+        }
+    }
+
+    private _onCanvasLeave(): void {
+        if (this._hoveredRing >= 0) {
+            this._hoveredRing = -1;
+            this._canvas.style.cursor = '';
+            this._drawCanvas();
+        }
+    }
+
+    private _onCanvasClick(_e: MouseEvent): void {
+        if (this._playing || this._completionAnimating || !this._circuitState || !this._canvas)
+            return;
+        if (this._hoveredRing < 0) return;
+        if (isSolved(this._circuitState, this._powered)) return;
+        this._rotateRing(this._hoveredRing);
+    }
+
+    private _rotateRing(ring: number): void {
+        if (this._playing || this._completionAnimating) return;
+        this._rotations = this._rotations.map((r, i) => (i === ring ? (r + 1) % 4 : r));
+        this._moves++;
+        playTone(Math.min(this._moves / Math.max(this._optimal, 1), 1));
+        this._simulateAndRender();
+        this._sendStatus(this._moves, this._optimal);
+        if (this._circuitState && isSolved(this._circuitState, this._powered))
+            setTimeout(() => this._completePuzzle(), 400);
+    }
+
+    private async _completePuzzle(): Promise<void> {
+        this._playing = true;
+        this._completionAnimating = true;
+        this._syncActions();
+        playChime();
+        const mel = playMelody('F4/4 A4/4 C5/4 F5/4 E5/4 D5/4 C5/4');
+        for (let f = 0; f < 4; f++) {
+            if (this._canvas)
+                this._canvas.style.filter = f % 2 === 0 ? 'brightness(1.4)' : 'brightness(1)';
+            await sleep(200);
+        }
+        if (this._canvas) this._canvas.style.filter = '';
+        await mel;
+        this._completionAnimating = false;
+        this._sendComplete();
+    }
+
+    render() {
+        return html`<div id="lab-circuit-wrap">
+            <canvas
+                id="lab-circuit-canvas"
+                @click=${this._onCanvasClick}
+                @mousemove=${this._onCanvasMove}
+                @mouseleave=${this._onCanvasLeave}
+            ></canvas>
+        </div>`;
+    }
+
+    updated(): void {
+        if (!this._canvas) {
+            this._canvas = this.querySelector('#lab-circuit-canvas') as HTMLCanvasElement;
+            if (this._canvas) {
+                try {
+                    this._ctx = this._canvas.getContext('2d');
+                } catch {
+                    /* ignore */
+                }
+                this._observeResize();
+            }
+        }
+        if (this._ctx) this._drawCanvas();
+    }
+
+    disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this._resizeObs?.disconnect();
+        this._resizeObs = null;
+    }
+
+    private _resizeObs: ResizeObserver | null = null;
+
+    private _observeResize(): void {
+        if (this._resizeObs) return;
+        const wrap = this.querySelector('#lab-circuit-wrap');
+        if (!wrap) return;
+        if (typeof ResizeObserver === 'undefined') {
+            this._drawCanvas();
+            return;
+        }
+        this._resizeObs = new ResizeObserver(() => this._drawCanvas());
+        this._resizeObs.observe(wrap);
+    }
+}
+
+customElements.define('puzzle-lab-circuit', PuzzleLabCircuit);
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'puzzle-lab-circuit': PuzzleLabCircuit;
+    }
+}

@@ -63,7 +63,7 @@
 - [ ] Church
 - [ ] Hexagon
 - [ ] 3D cube
-- [ ] Lab circuit
+- [x] Lab circuit
 
 ## RE 7
 

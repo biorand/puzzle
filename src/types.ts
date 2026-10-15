@@ -113,4 +113,5 @@ export const PUZZLE_VANILLA_COUNTS: Record<string, number> = {
     slidingBlock: 1,
     labPuzzle: 1,
     plant43: 2,
+    labCircuit: 0,
 };
