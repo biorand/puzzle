@@ -221,6 +221,13 @@ export class RepuzzlesApp extends LitElement {
         location.hash = '#/melody';
     }
 
+    private _onRunPuzzleComplete(e: CustomEvent<{ puzzleId: string }>): void {
+        // Completing a puzzle in a run unlocks it for Quick Play
+        const idx = puzzleOrder.indexOf(e.detail.puzzleId);
+        if (idx < 0) return;
+        this._setProgress(Math.max(this._getProgress(), idx));
+    }
+
     private _onPuzzleSelect(id: string): void {
         const mod = puzzles.get(id);
         if (!mod) return;
@@ -447,7 +454,11 @@ export class RepuzzlesApp extends LitElement {
 
         if (this._page === 'run') {
             return html`
-                <run-host mode=${this._runMode} @cheat-unlock-all=${this._onCheatUnlock}></run-host>
+                <run-host
+                    mode=${this._runMode}
+                    @cheat-unlock-all=${this._onCheatUnlock}
+                    @run-puzzle-complete=${this._onRunPuzzleComplete}
+                ></run-host>
                 <complete-overlay
                     ?open=${this._overlayOpen}
                     message=${this._overlayMessage}

@@ -203,6 +203,15 @@ export class RunHost extends LitElement {
             time: puzzleElapsed,
         });
 
+        // Let the app unlock this puzzle for Quick Play
+        this.dispatchEvent(
+            new CustomEvent('run-puzzle-complete', {
+                detail: { puzzleId: config.puzzleId },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+
         this._currentConfigIdx++;
         if (this._currentConfigIdx >= this._configs.length) {
             this._finishRun();
@@ -388,7 +397,7 @@ export class RunHost extends LitElement {
                               <div class="run-quit-dialog" @click=${this._stopProp}>
                                   <div class="run-quit-title">Abandon Run?</div>
                                   <div class="run-quit-desc">
-                                      Your progress so far will not be saved.
+                                      This run's results will not be saved.
                                   </div>
                                   <div class="run-quit-btns">
                                       <button
