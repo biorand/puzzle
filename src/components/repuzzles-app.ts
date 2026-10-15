@@ -2,7 +2,7 @@ import { LitElement, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { html, unsafeStatic } from 'lit/static-html.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { initAudioOnFirstClick, playMelody as pMelody } from '../audio';
+import { initAudioOnFirstClick } from '../audio';
 import { puzzleOrder, puzzles, puzzlesByPath } from '../puzzles/index';
 import '../puzzles/puzzle-graveyard';
 import '../puzzles/puzzle-keypad';
@@ -30,6 +30,37 @@ import './status-bar';
 function readStoredInt(key: string): number {
     const n = parseInt(localStorage.getItem(key) || '', 10);
     return Number.isFinite(n) ? n : 0;
+}
+
+const UNLOCKED_KEY = 'repuzzles-unlocked';
+const LEGACY_PROGRESS_KEY = 'repuzzles-progress';
+
+function readUnlockedPuzzles(): Set<string> {
+    const raw = localStorage.getItem(UNLOCKED_KEY);
+    if (raw !== null) {
+        try {
+            const parsed: unknown = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return new Set(parsed.filter((v): v is string => typeof v === 'string'));
+            }
+        } catch {
+            // corrupt data: treat as nothing unlocked
+        }
+        return new Set();
+    }
+    // Migrate the legacy linear progress value (progress N unlocked puzzles 0..N)
+    const legacy = parseInt(localStorage.getItem(LEGACY_PROGRESS_KEY) ?? '', 10);
+    if (Number.isFinite(legacy) && legacy >= 0) {
+        const ids = puzzleOrder.slice(0, Math.min(legacy + 1, puzzleOrder.length));
+        localStorage.setItem(UNLOCKED_KEY, JSON.stringify(ids));
+        localStorage.removeItem(LEGACY_PROGRESS_KEY);
+        return new Set(ids);
+    }
+    return new Set();
+}
+
+function writeUnlockedPuzzles(ids: Iterable<string>): void {
+    localStorage.setItem(UNLOCKED_KEY, JSON.stringify([...ids]));
 }
 
 export class RepuzzlesApp extends LitElement {
@@ -138,16 +169,6 @@ export class RepuzzlesApp extends LitElement {
         localStorage.setItem(`repuzzles-${id}-score`, String(n));
     }
 
-    private _getProgress(): number {
-        const n = readStoredInt('repuzzles-progress');
-        return Math.min(Math.max(n, 0), puzzleOrder.length - 1);
-    }
-
-    private _setProgress(n: number): void {
-        const clamped = Math.min(Math.max(n, 0), puzzleOrder.length - 1);
-        localStorage.setItem('repuzzles-progress', String(clamped));
-    }
-
     private _getKeypadTutorial(): number {
         return readStoredInt('repuzzles-keypad-tutorial');
     }
@@ -157,25 +178,19 @@ export class RepuzzlesApp extends LitElement {
     }
 
     private _isUnlocked(puzzleId: string): boolean {
-        return puzzleOrder.indexOf(puzzleId) <= this._getProgress();
+        return readUnlockedPuzzles().has(puzzleId);
+    }
+
+    private _unlockPuzzle(puzzleId: string): void {
+        if (!puzzles.has(puzzleId)) return;
+        const unlocked = readUnlockedPuzzles();
+        if (unlocked.has(puzzleId)) return;
+        unlocked.add(puzzleId);
+        writeUnlockedPuzzles(unlocked);
     }
 
     private _getRequirementLabel(id: string): string | undefined {
         if (this._isUnlocked(id)) return undefined;
-        const idx = puzzleOrder.indexOf(id);
-        if (idx <= 0) return undefined;
-        const puzzle = puzzles.get(id);
-        if (!puzzle) return undefined;
-
-        // The frontier puzzle can also be reached by finishing the previous
-        // puzzle in Quick Play; any locked puzzle can be unlocked by
-        // completing it in a run.
-        if (idx === this._getProgress() + 1) {
-            const prevPuzzle = puzzles.get(puzzleOrder[idx - 1]);
-            if (prevPuzzle) {
-                return `🔒 Complete ${prevPuzzle.name} in Quick Play or ${puzzle.name} in a run`;
-            }
-        }
         return '🔒 Complete in a run';
     }
 
@@ -232,9 +247,7 @@ export class RepuzzlesApp extends LitElement {
 
     private _onRunPuzzleComplete(e: CustomEvent<{ puzzleId: string }>): void {
         // Completing a puzzle in a run unlocks it for Quick Play
-        const idx = puzzleOrder.indexOf(e.detail.puzzleId);
-        if (idx < 0) return;
-        this._setProgress(Math.max(this._getProgress(), idx));
+        this._unlockPuzzle(e.detail.puzzleId);
     }
 
     private _onPuzzleSelect(id: string): void {
@@ -310,68 +323,35 @@ export class RepuzzlesApp extends LitElement {
         if (!puzzleId) return;
         const puzzleEl = e.target as HTMLElement;
 
-        const idx = puzzleOrder.indexOf(puzzleId);
-        const nextId = idx >= 0 && idx < puzzleOrder.length - 1 ? puzzleOrder[idx + 1] : null;
-        const wasNextUnlocked = nextId ? this._isUnlocked(nextId) : true;
-
         // Increment per-puzzle score
         const n = this._getScore(puzzleId) + 1;
         this._setScore(puzzleId, n);
         this._score = n;
 
-        // Handle keypad tutorial separately (all 5 steps before progress advances)
+        // Advance the keypad tutorial (onboarding only; unlocks come from runs)
         if (puzzleId === 'keypad') {
             const step = this._getKeypadTutorial();
             if (step < 5) {
                 const newStep = step + 1;
                 this._setKeypadTutorial(newStep);
-                if (newStep < 5) {
-                    this._activeTutorialStep = newStep;
-                    this._activeForceDifficulty = [1, 1, 2, 2, 3][newStep];
-                } else {
-                    this._activeTutorialStep = undefined;
-                    this._activeForceDifficulty = undefined;
-                    if (this._getProgress() < 1) this._setProgress(1);
-                }
-            }
-        } else {
-            // Non-keypad puzzle: advance progress to unlock the next one
-            const newProgress = Math.max(this._getProgress(), idx + 1);
-            this._setProgress(newProgress);
-        }
-
-        // Check if this completion unlocks the next puzzle
-        let nextMod: PuzzleModule | null = null;
-        if (nextId) {
-            const nowUnlocked = this._isUnlocked(nextId);
-            if (!wasNextUnlocked && nowUnlocked) {
-                nextMod = puzzles.get(nextId) || null;
+                this._activeTutorialStep = newStep < 5 ? newStep : undefined;
+                this._activeForceDifficulty = newStep < 5 ? [1, 1, 2, 2, 3][newStep] : undefined;
             }
         }
 
-        // Show overlay
+        // Show the completion overlay, then regenerate
         this._overlayMessage = 'COMPLETED';
-        if (nextMod) {
-            this._overlayNextName = nextMod.name;
-            this._overlayOpen = true;
-            pMelody('C4/4 E4/4 G4/4 C5/4');
-            await sleep(3000);
-            this._overlayOpen = false;
-            this._overlayNextName = null;
-            location.hash = `#/${nextMod.sourceGame}/${nextMod.slug}`;
-        } else {
-            this._overlayNextName = null;
-            this._overlayOpen = true;
-            await sleep(2000);
-            this._overlayOpen = false;
-            puzzleEl.dispatchEvent(
-                new CustomEvent(PUZZLE_REGENERATE, { bubbles: true, composed: true }),
-            );
-        }
+        this._overlayNextName = null;
+        this._overlayOpen = true;
+        await sleep(2000);
+        this._overlayOpen = false;
+        puzzleEl.dispatchEvent(
+            new CustomEvent(PUZZLE_REGENERATE, { bubbles: true, composed: true }),
+        );
     }
 
     private _onCheatUnlock(e: CustomEvent<{ playMelodyFn: Promise<void> }>): void {
-        this._setProgress(puzzleOrder.length - 1);
+        writeUnlockedPuzzles(puzzleOrder);
         this._overlayNextName = 'ALL PUZZLES';
         this._overlayMessage = 'CHEAT ACTIVATED';
         this._overlayOpen = true;

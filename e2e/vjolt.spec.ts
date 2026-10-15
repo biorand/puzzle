@@ -5,7 +5,7 @@ test.describe('V-JOLT Puzzle', () => {
     await page.goto('/');
     await page.evaluate(() => {
       localStorage.clear();
-      localStorage.setItem('repuzzles-progress', '2');
+            localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad','vjolt']));
     });
     await page.goto('/#/re1r/v-jolt');
     await page.waitForSelector('.vjolt-wall');

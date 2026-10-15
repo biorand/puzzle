@@ -2,9 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Keypad Puzzle', () => {
     test.beforeEach(async ({ page }) => {
-        // Start fresh — only keypad unlocked
+        // Start fresh with the keypad unlocked (puzzles unlock by being
+        // completed in a run)
         await page.goto('/');
-        await page.evaluate(() => localStorage.clear());
+        await page.evaluate(() => {
+            localStorage.clear();
+            localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad']));
+        });
     });
 
     test('fresh player sees step 1 of the tutorial with forced difficulty', async ({ page }) => {
@@ -71,14 +75,15 @@ test.describe('Keypad Puzzle', () => {
         await expect(page).toHaveURL('/#/');
 
         // Verify all puzzles are now unlocked
-        const progress = await page.evaluate(() =>
-            parseInt(localStorage.getItem('repuzzles-progress') || '0', 10),
+        const unlocked = await page.evaluate(
+            () => JSON.parse(localStorage.getItem('repuzzles-unlocked') || '[]') as string[],
         );
-        expect(progress).toBe(8); // puzzleOrder.length - 1
+        expect(unlocked.length).toBe(9);
 
         // All 9 cards should be enabled (no locked class)
-        const lockedCards = page.locator('.menu-card.locked');
-        await expect(lockedCards).toHaveCount(0);
+        await page.evaluate(() => (location.hash = '#/quickplay'));
+        await page.waitForSelector('puzzle-select #menu-grid');
+        await expect(page.locator('.menu-card.locked')).toHaveCount(0);
     });
 
     test('pressing cheat sequence 2-2-3-6 three times unlocks all puzzles', async ({ page }) => {
@@ -136,10 +141,10 @@ test.describe('Keypad Puzzle', () => {
         await page.waitForTimeout(3500);
         await expect(page).toHaveURL('/#/');
 
-        // Verify progress
-        const progress = await page.evaluate(() =>
-            parseInt(localStorage.getItem('repuzzles-progress') || '0', 10),
+        // Verify all puzzles are unlocked
+        const unlocked = await page.evaluate(
+            () => JSON.parse(localStorage.getItem('repuzzles-unlocked') || '[]') as string[],
         );
-        expect(progress).toBe(8);
+        expect(unlocked.length).toBe(9);
     });
 });

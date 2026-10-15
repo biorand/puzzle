@@ -70,45 +70,39 @@ test.describe('Puzzle Select Screen', () => {
         await expect(thumbs).toHaveCount(9);
     });
 
-    test('unparsable progress value does not lock every puzzle', async ({ page }) => {
-        await page.evaluate(() => localStorage.setItem('repuzzles-progress', 'abc'));
+    test('corrupt unlock data is ignored and leaves puzzles locked', async ({ page }) => {
+        await page.evaluate(() => localStorage.setItem('repuzzles-unlocked', '{not json'));
         await page.reload();
         await page.evaluate(() => (location.hash = '#/quickplay'));
         await page.waitForSelector('puzzle-select #menu-grid');
 
-        const firstCard = page.locator('.menu-card').first();
-        await expect(firstCard).not.toHaveClass(/locked/);
-        await expect(firstCard).toBeEnabled();
+        await expect(page.locator('.menu-card.locked')).toHaveCount(9);
     });
 
-    test('first puzzle (Keypad) is unlocked on fresh start', async ({ page }) => {
+    test('all puzzles are locked on fresh start', async ({ page }) => {
+        await expect(page.locator('.menu-card.locked')).toHaveCount(9);
         const firstCard = page.locator('.menu-card').first();
-        await expect(firstCard).not.toHaveClass(/locked/);
-        await expect(firstCard).toBeEnabled();
+        await expect(firstCard).toBeDisabled();
         await expect(firstCard.locator('.menu-card-name')).toHaveText('Keypad');
     });
 
     test('locked puzzles show requirement label and are disabled', async ({ page }) => {
         const lockedCards = page.locator('.menu-card.locked');
         const lockedCount = await lockedCards.count();
-        expect(lockedCount).toBe(8);
+        expect(lockedCount).toBe(9);
 
         const requirements = page.locator('.menu-card-req');
-        await expect(requirements).toHaveCount(8);
+        await expect(requirements).toHaveCount(9);
 
         const firstLocked = lockedCards.first();
         await expect(firstLocked).toBeDisabled();
-        await expect(firstLocked.locator('.menu-card-req')).toContainText('Complete');
+        await expect(firstLocked.locator('.menu-card-req')).toHaveText('🔒 Complete in a run');
     });
 
-    test('lock labels explain both ways to unlock a puzzle', async ({ page }) => {
-        // The frontier puzzle can be unlocked via Quick Play or by completing
-        // it in a run
-        const vjoltReq = page.locator('.menu-card[data-id="vjolt"] .menu-card-req');
-        await expect(vjoltReq).toContainText('Complete Keypad in Quick Play');
-        await expect(vjoltReq).toContainText('V-JOLT in a run');
-
-        // Puzzles further down the chain can only be unlocked in a run
+    test('lock labels tell players to complete the puzzle in a run', async ({ page }) => {
+        await expect(page.locator('.menu-card[data-id="vjolt"] .menu-card-req')).toHaveText(
+            '🔒 Complete in a run',
+        );
         await expect(page.locator('.menu-card[data-id="labPuzzle"] .menu-card-req')).toHaveText(
             '🔒 Complete in a run',
         );
@@ -122,14 +116,22 @@ test.describe('Puzzle Select Screen', () => {
     });
 
     test('clicking unlocked puzzle navigates to puzzle', async ({ page }) => {
+        await page.evaluate(() =>
+            localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad'])),
+        );
+        await page.reload();
+        await page.evaluate(() => (location.hash = '#/quickplay'));
+        await page.waitForSelector('puzzle-select #menu-grid');
+
         const keypadCard = page.locator('.menu-card').first();
+        await expect(keypadCard).not.toHaveClass(/locked/);
         await keypadCard.click();
         await expect(page).toHaveURL(/#\/re1\/keypad/);
     });
 
     test('unlocking a puzzle reveals its card as enabled', async ({ page }) => {
         await page.evaluate(() => {
-            localStorage.setItem('repuzzles-progress', '1');
+            localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad', 'vjolt']));
         });
         await page.reload();
         await page.evaluate(() => (location.hash = '#/quickplay'));
@@ -139,6 +141,10 @@ test.describe('Puzzle Select Screen', () => {
         await expect(secondCard).not.toHaveClass(/locked/);
         await expect(secondCard).toBeEnabled();
         await expect(secondCard.locator('.menu-card-name')).toHaveText('V-JOLT');
+
+        // Keypad is unlocked and portable safe is still locked
+        await expect(page.locator('.menu-card').first()).not.toHaveClass(/locked/);
+        await expect(page.locator('.menu-card[data-id="portableSafe"]')).toHaveClass(/locked/);
     });
 
     test('card hover effect lifts the card', async ({ page }) => {

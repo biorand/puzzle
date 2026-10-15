@@ -5,7 +5,7 @@ test.describe('Plant 43 Puzzle', () => {
     await page.goto('/');
     await page.evaluate(() => {
       localStorage.clear();
-      localStorage.setItem('repuzzles-progress', '10');
+            localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad','vjolt','portableSafe','powerPanel','stagla','graveyard','slidingBlock','labPuzzle','plant43']));
     });
     await page.goto('/#/re2r/plant-43');
     await page.waitForSelector('.plant43-stage');

@@ -3,7 +3,11 @@ import { test, expect } from '@playwright/test';
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => {
+      localStorage.clear();
+      // Puzzles unlock by being completed in a run; seed a couple for navigation tests
+      localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad', 'vjolt']));
+    });
     await page.reload();
     await page.waitForSelector('#menu h1');
   });

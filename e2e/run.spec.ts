@@ -195,19 +195,23 @@ test.describe('Run Mode', () => {
       timeout: 10000,
     });
 
-    // V-JOLT is now unlocked for Quick Play, Portable Safe is still locked
-    expect(await page.evaluate(() => localStorage.getItem('repuzzles-progress'))).toBe('1');
+    // Keypad and V-JOLT are now unlocked for Quick Play, Portable Safe is still locked
+    const unlocked = await page.evaluate(
+      () => JSON.parse(localStorage.getItem('repuzzles-unlocked') || '[]') as string[],
+    );
+    expect(unlocked.sort()).toEqual(['keypad', 'vjolt']);
 
     await page.locator('#back-btn').click();
     await page.locator('.run-quit-btn-quit').click();
     await page.evaluate(() => (location.hash = '#/quickplay'));
     await page.waitForSelector('puzzle-select #menu-grid');
 
+    await expect(page.locator('.menu-card[data-id="keypad"]')).not.toHaveClass(/locked/);
     await expect(page.locator('.menu-card[data-id="vjolt"]')).not.toHaveClass(/locked/);
     await expect(page.locator('.menu-card[data-id="portableSafe"]')).toHaveClass(/locked/);
     await expect(
       page.locator('.menu-card[data-id="portableSafe"] .menu-card-req'),
-    ).toContainText('Complete V-JOLT in Quick Play or Portable Safe in a run');
+    ).toHaveText('🔒 Complete in a run');
   });
 
   test('reset is inert during completion and cannot corrupt the result', async ({ page }) => {
@@ -302,7 +306,7 @@ test.describe('Run Mode', () => {
     await page.waitForTimeout(1000);
 
     await page.evaluate(() => {
-      localStorage.setItem('repuzzles-progress', '5');
+      localStorage.setItem('repuzzles-unlocked', JSON.stringify(['keypad']));
       localStorage.setItem('other-key', 'keep');
     });
 
@@ -322,12 +326,12 @@ test.describe('Run Mode', () => {
     expect(dialogSeen).toBe(false);
 
     const state = await page.evaluate(() => ({
-      progress: localStorage.getItem('repuzzles-progress'),
+      unlocked: localStorage.getItem('repuzzles-unlocked'),
       other: localStorage.getItem('other-key'),
       onRun: !!document.querySelector('run-host'),
       onSettings: !!document.querySelector('settings-page'),
     }));
-    expect(state.progress).toBeNull();
+    expect(state.unlocked).toBeNull();
     expect(state.other).toBe('keep');
     expect(state.onRun).toBe(true);
     expect(state.onSettings).toBe(false);
