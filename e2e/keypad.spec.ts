@@ -36,6 +36,51 @@ test.describe('Keypad Puzzle', () => {
         await expect(page.locator('#optimal-num')).toHaveText('1');
     });
 
+    test('toolbar keeps its size while the puzzle completes', async ({ page }) => {
+        await page.goto('/#/re1/keypad');
+        await page.waitForSelector('#keypad');
+
+        const before = await page.evaluate(() => ({
+            footerH: document.querySelector('app-footer')!.getBoundingClientRect().height,
+            puzzleH: document.querySelector('puzzle-keypad')!.getBoundingClientRect().height,
+        }));
+
+        await page.evaluate(() => {
+            (window as any).__kp = document.querySelector('puzzle-keypad');
+        });
+        const cellIdx = await page.evaluate(() => {
+            const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
+            const kp = document.querySelector('puzzle-keypad') as any;
+            for (let i = 0; i < 9; i++) if ((kp._state ^ MASKS[i]) === 0x1ff) return i;
+            return -1;
+        });
+        expect(cellIdx).toBeGreaterThanOrEqual(0);
+        await page.locator(`.cell[data-idx="${cellIdx}"]`).click();
+
+        const during = await page.evaluate(async () => {
+            const puzzle = (window as any).__kp;
+            for (let i = 0; i < 200 && !puzzle._playing; i++) {
+                await new Promise((r) => setTimeout(r, 10));
+            }
+            const footerEl = document.querySelector('app-footer')!;
+            const buttons = Array.from(footerEl.shadowRoot!.querySelectorAll('button'));
+            const newLabel = buttons[0].querySelector('.btn-label') as HTMLElement;
+            return {
+                playing: puzzle._playing,
+                footerH: footerEl.getBoundingClientRect().height,
+                puzzleH: puzzle.getBoundingClientRect().height,
+                newDisabled: buttons[0].disabled,
+                newLabelDisplay: getComputedStyle(newLabel).display,
+            };
+        });
+
+        expect(during.playing).toBe(true);
+        expect(Math.abs(during.footerH - before.footerH)).toBeLessThanOrEqual(1);
+        expect(Math.abs(during.puzzleH - before.puzzleH)).toBeLessThanOrEqual(1);
+        expect(during.newDisabled).toBe(true);
+        expect(during.newLabelDisplay).not.toBe('none');
+    });
+
     test('cheat-unlock-all overlay shows CHEAT ACTIVATED and ALL PUZZLES, then navigates home', async ({
         page,
     }) => {

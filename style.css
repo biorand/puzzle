@@ -84,6 +84,8 @@ puzzle-vjolt {
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    /* Keep puzzle content clear of the surrounding bars and frame */
+    padding: 4px;
 }
 
 puzzle-menu {

@@ -315,7 +315,14 @@ export class RepuzzlesApp extends LitElement {
     }
 
     private _onPuzzleActions(e: CustomEvent<ActionButton[]>): void {
-        this._buttons = e.detail;
+        const buttons = e.detail;
+        if (buttons.length === 0) {
+            // Puzzle is playing its completion animation: keep the toolbar
+            // buttons visible but inert so the layout does not jump.
+            this._buttons = this._buttons.map((b) => ({ label: b.label }));
+            return;
+        }
+        this._buttons = buttons;
     }
 
     private async _onPuzzleComplete(e: CustomEvent): Promise<void> {

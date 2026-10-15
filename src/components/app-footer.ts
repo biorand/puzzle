@@ -6,6 +6,7 @@ interface FooterSlot {
     icon: string;
     label: string;
     handler?: () => void;
+    matched?: boolean;
 }
 
 export class AppFooter extends LitElement {
@@ -27,8 +28,10 @@ export class AppFooter extends LitElement {
             const lower = btn.label.toLowerCase();
             if (lower.includes('new')) {
                 slots[0].handler = btn.handler;
+                slots[0].matched = true;
             } else if (lower.includes('reset') || lower.includes('restart')) {
                 slots[3].handler = btn.handler;
+                slots[3].matched = true;
             }
         }
 
@@ -61,6 +64,9 @@ export class AppFooter extends LitElement {
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                     transition: color 0.15s;
+                    /* Keep the toolbar height constant no matter what actions
+                       are currently shown or disabled. */
+                    min-height: 61px;
                 }
                 button:hover {
                     color: #eee;
@@ -73,12 +79,20 @@ export class AppFooter extends LitElement {
                 }
                 button:disabled {
                     cursor: default;
-                    color: transparent;
                 }
                 button:disabled:hover {
+                    color: #888;
+                }
+                button:disabled:not(.slot-inactive) {
+                    opacity: 0.35;
+                }
+                /* Slots without a matching action show nothing at all */
+                button.slot-inactive,
+                button.slot-inactive:hover,
+                button.slot-inactive:active {
                     color: transparent;
                 }
-                button:disabled * {
+                button.slot-inactive * {
                     display: none;
                 }
                 .material-symbols-outlined {
@@ -120,7 +134,11 @@ export class AppFooter extends LitElement {
             </style>
             ${slots.map(
                 (cfg) => html`
-                    <button ?disabled=${!cfg.handler} @click=${cfg.handler}>
+                    <button
+                        class="${cfg.matched ? '' : 'slot-inactive'}"
+                        ?disabled=${!cfg.handler}
+                        @click=${cfg.handler}
+                    >
                         ${cfg.icon
                             ? html`<span class="material-symbols-outlined btn-icon"
                                   >${cfg.icon}</span

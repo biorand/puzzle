@@ -45,6 +45,15 @@ test.describe('Run Mode', () => {
 
     await expect(page.locator('puzzle-keypad')).toBeVisible();
 
+    // Force a harder puzzle so the first click cannot solve it accidentally,
+    // which would disable the toolbar while it completes
+    await page.evaluate(() => {
+      const kp = document.querySelector('puzzle-keypad') as any;
+      kp.forceDifficulty = 4;
+      kp.regenerate();
+    });
+    await page.waitForTimeout(100);
+
     // Debug: check forceDifficulty and other props
     const debug = await page.evaluate(() => {
       const kp = document.querySelector('puzzle-keypad') as any;
@@ -212,6 +221,63 @@ test.describe('Run Mode', () => {
     await expect(
       page.locator('.menu-card[data-id="portableSafe"] .menu-card-req'),
     ).toHaveText('🔒 Complete in a run');
+  });
+
+  test('layout stays stable while a puzzle completes', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => (location.hash = '#/run/vanilla'));
+    await page.waitForTimeout(1200);
+    await expect(page.locator('puzzle-keypad')).toBeVisible();
+
+    const before = await page.evaluate(() => ({
+      footerH: document.querySelector('app-footer')!.getBoundingClientRect().height,
+      puzzleH: document.querySelector('puzzle-keypad')!.getBoundingClientRect().height,
+      barH: document.querySelector('.run-info-bar-bottom')!.getBoundingClientRect().height,
+      padding: getComputedStyle(document.querySelector('puzzle-keypad')!).paddingTop,
+    }));
+
+    // Remember the element, solve config 1
+    await page.evaluate(() => {
+      (window as any).__kp = document.querySelector('puzzle-keypad');
+    });
+    const cellIdx = await page.evaluate(() => {
+      const MASKS = [0x00b, 0x017, 0x026, 0x059, 0x0ba, 0x134, 0x0c8, 0x1d0, 0x1a0];
+      const kp = document.querySelector('puzzle-keypad') as any;
+      for (let i = 0; i < 9; i++) if ((kp._state ^ MASKS[i]) === 0x1ff) return i;
+      return -1;
+    });
+    expect(cellIdx).toBeGreaterThanOrEqual(0);
+    await page.locator(`.cell[data-idx="${cellIdx}"]`).click();
+
+    const during = await page.evaluate(async () => {
+      const puzzle = (window as any).__kp;
+      for (let i = 0; i < 200 && !puzzle._playing; i++) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      const footerEl = document.querySelector('app-footer')!;
+      const buttons = Array.from(footerEl.shadowRoot!.querySelectorAll('button'));
+      const resetLabel = buttons[3].querySelector('.btn-label') as HTMLElement;
+      return {
+        playing: puzzle._playing,
+        footerH: footerEl.getBoundingClientRect().height,
+        puzzleH: puzzle.getBoundingClientRect().height,
+        barH: document.querySelector('.run-info-bar-bottom')!.getBoundingClientRect().height,
+        resetDisabled: buttons[3].disabled,
+        resetLabelDisplay: getComputedStyle(resetLabel).display,
+        resetOpacity: getComputedStyle(buttons[3]).opacity,
+      };
+    });
+
+    expect(during.playing).toBe(true);
+    expect(Math.abs(during.footerH - before.footerH)).toBeLessThanOrEqual(1);
+    expect(Math.abs(during.puzzleH - before.puzzleH)).toBeLessThanOrEqual(1);
+    expect(Math.abs(during.barH - before.barH)).toBeLessThanOrEqual(1);
+    expect(during.resetDisabled).toBe(true);
+    // The button dims but keeps its layout
+    expect(during.resetLabelDisplay).not.toBe('none');
+    expect(parseFloat(during.resetOpacity)).toBeLessThan(1);
+    // Puzzle content stays clear of the surrounding bars
+    expect(before.padding).toBe('4px');
   });
 
   test('reset is inert during completion and cannot corrupt the result', async ({ page }) => {
